@@ -1,15 +1,19 @@
 fastapi
 uvicorn
+pydantic
+pydantic-settings
+email-validator
+motor
+python-dotenv
+python-multipart
+passlib[bcrypt]
+python-jose[cryptography]
+google-auth
+google-auth-oauthlib
+httpx
 pandas
 numpy
 scikit-learn
-pydantic
-pydantic-settings
-python-dotenv
-httpx
 pytest
 jinja2
-python-multipart
-motor
-pymongo
 pickle5 ; python_version < "3.8"

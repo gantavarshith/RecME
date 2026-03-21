@@ -15,7 +15,7 @@ load_dotenv()
 
 TMDB_KEY = os.getenv("TMDB_API_KEY", "")
 OMDB_KEY = os.getenv("OMDB_API_KEY", "")
-TMDB_BASE = "https://api.themoviedb.org/3"
+TMDB_BASE = "https://api.tmdb.org/3"
 OMDB_BASE = "http://www.omdbapi.com/"
 POSTER_BASE = "https://image.tmdb.org/t/p/w500"
 BACKDROP_BASE = "https://image.tmdb.org/t/p/original"
@@ -80,7 +80,9 @@ async def _tmdb(client: httpx.AsyncClient, path: str, **params) -> dict:
         r.raise_for_status()
         return r.json()
     except Exception as e:
-        print(f"[TMDB ERROR] {path}: {e}")
+        import traceback
+        traceback.print_exc()
+        print(f"[TMDB ERROR] {path}: {repr(e)}")
         return {}
 
 
@@ -239,34 +241,88 @@ async def get_mood_movies(mood: str, top_k: int = 20) -> list[dict]:
     return shuffled[:top_k]
 
 
-async def search_films(query: str, page: int = 1) -> list[dict]:
-    cache_key = f"search:{query.lower()}:{page}"
+async def get_movies_by_tag(tag: str, limit: int = 20) -> list[dict]:
+    """
+    Fetch movies by tag: popular, featured, or new.
+    Uses specialized TMDB endpoints for each.
+    """
+    tag = tag.lower().strip()
+    
+    if tag == "featured":
+        # For featured, we cache the pool of movies, but shuffle the output every time
+        pool_key = f"tag_pool_v1:{tag}"
+        pool = _cache_get(pool_key)
+        
+        if pool is None:
+            async with httpx.AsyncClient() as client:
+                pages = await asyncio.gather(
+                    _tmdb(client, "/movie/top_rated", page=1),
+                    _tmdb(client, "/movie/top_rated", page=2),
+                    _tmdb(client, "/movie/top_rated", page=3),
+                )
+                raw_results = []
+                for p in pages:
+                    raw_results.extend(p.get("results", []))
+                
+                if not raw_results:
+                    return []
+                
+                # Shape the pool
+                pool = [_shape(m) for m in raw_results if m.get("poster_path")]
+                if pool:
+                    _cache_set(pool_key, pool)
+        
+        if pool:
+            shuffled = list(pool)
+            random.shuffle(shuffled)
+            print(f"[DEBUG] Shuffling featured pool of {len(pool)} movies. First is now: {shuffled[0].get('title')}")
+            return shuffled[:limit]
+        return []
+
+    cache_key = f"tag_v5:{tag}:{limit}"
     cached = _cache_get(cache_key)
     if cached is not None:
         return cached
 
     async with httpx.AsyncClient() as client:
-        # Run search on page 1 and 2 in parallel for more results
-        p1, p2 = await asyncio.gather(
-            _tmdb(client, "/search/movie", query=query, include_adult="false", page=1),
-            _tmdb(client, "/search/movie", query=query, include_adult="false", page=2),
-        )
+        if tag == "popular":
+            # TMDB Popular movies
+            data = await _tmdb(client, "/movie/popular", page=1)
+        elif tag == "new":
+            # TMDB Now Playing movies
+            data = await _tmdb(client, "/movie/now_playing", page=1)
+        else:
+            return []
 
-    seen: set = set()
-    raw: list[dict] = []
-    for page_data in [p1, p2]:
-        for m in page_data.get("results", []):
-            mid = m.get("id")
-            # Include movies even without poster — we'll show fallback icon
-            if mid and mid not in seen:
-                seen.add(mid)
-                raw.append(m)
+    raw = data.get("results", [])
+    if not raw:
+        return []
 
-    # Sort by popularity * rating to surface the best matches first
-    raw.sort(key=lambda m: (m.get("vote_average") or 0) * (m.get("popularity") or 1), reverse=True)
-    result = [_shape(m) for m in raw[:30]]
-    _cache_set(cache_key, result)
+    # Shape and limit
+    result = [_shape(m) for m in raw if m.get("poster_path")][:limit]
+    
+    if result:
+        _cache_set(cache_key, result)
+        
     return result
+
+
+async def search_films(query: str, page: int = 1) -> list[dict]:
+    # Direct fetch matching the test script to avoid connection issues
+    async with httpx.AsyncClient() as client:
+        try:
+            r = await client.get(
+                f"{TMDB_BASE}/search/movie",
+                params={"api_key": TMDB_KEY, "query": query, "page": 1},
+                timeout=10,
+            )
+            data = r.json()
+            raw = data.get("results", [])
+            raw.sort(key=lambda m: (m.get("vote_average") or 0) * (m.get("popularity") or 1), reverse=True)
+            return [_shape(m) for m in raw[:30] if m.get("poster_path")]
+        except Exception as e:
+            print("Search films error:", e)
+            return []
 
 
 async def get_movie_detail(movie_id: int) -> Optional[dict]:

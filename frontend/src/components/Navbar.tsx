@@ -1,22 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Film, MessageSquare, Search, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Film, MessageSquare, Search, X, Bookmark, UserCircle, LogOut, LogIn } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/authStore";
 
 const navLinks = [
   { href: "/movies", label: "Movies" },
   { href: "/chatbot", label: "AI Chatbot", icon: MessageSquare },
+  { href: "/watchlist", label: "Watchlist", icon: Bookmark },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const { user, isAuthenticated, logout } = useAuthStore();
+
+  const handleLogout = () => {
+    logout();
+    router.push("/");
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +34,13 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl">
+    <header 
+      className="sticky top-0 z-40 w-full bg-white/5 dark:bg-zinc-950/2 backdrop-blur-2xl transition-all duration-300 shadow-none border-none"
+      style={{
+        maskImage: "linear-gradient(to bottom, black 85%, transparent 100%)",
+        WebkitMaskImage: "linear-gradient(to bottom, black 85%, transparent 100%)"
+      }}
+    >
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
         {/* Logo */}
         <Link
@@ -78,6 +91,34 @@ export function Navbar() {
             )}
           </form>
           <ThemeToggle fixed={false} />
+          
+          {isAuthenticated ? (
+            <div className="flex items-center gap-3 ml-2">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                <div className="w-6 h-6 rounded-full bg-purple-600 flex items-center justify-center text-white text-[10px] font-black uppercase">
+                  {user?.name.charAt(0)}
+                </div>
+                <span className="text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:inline">
+                  {user?.name.split(" ")[0]}
+                </span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-all"
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold transition-all shadow-lg shadow-purple-600/20 active:scale-95 ml-2"
+            >
+              <LogIn className="w-4 h-4" />
+              <span className="hidden sm:inline">Sign In</span>
+            </Link>
+          )}
         </div>
       </div>
     </header>

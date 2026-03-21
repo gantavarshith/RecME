@@ -2,8 +2,9 @@
 
 import { useEffect, useState, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { searchMovies, getMoodRecommendations, getRecommendations, Movie } from "@/lib/api";
-import { Search, Sparkles, TrendingUp, Star, Film, X, Shuffle } from "lucide-react";
+import { searchMovies, getMoodRecommendations, getRecommendations, getMoviesByTag, Movie, addToWatchlist } from "@/lib/api";
+import { Search, Sparkles, TrendingUp, Star, Film, X, Shuffle, Bookmark, Check } from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
 import { motion, AnimatePresence } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
 import Image from "next/image";
@@ -19,6 +20,33 @@ const MOODS = [
 ];
 
 function MovieCard({ movie }: { movie: Movie }) {
+  const { token, isAuthenticated } = useAuthStore();
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleAddToWatchlist = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isAuthenticated) {
+        window.location.href = "/login";
+        return;
+    }
+
+    if (token) {
+        setIsSaving(true);
+        try {
+            await addToWatchlist(movie, token);
+            setIsSaved(true);
+            setTimeout(() => setIsSaved(false), 2000);
+        } catch (err) {
+            console.error("Failed to add to watchlist", err);
+        } finally {
+            setIsSaving(false);
+        }
+    }
+  };
+
   const movieId = movie.id?.toString() || encodeURIComponent(movie.title);
   const posterUrl = movie.poster_path
     ? movie.poster_path.startsWith("http")
@@ -51,6 +79,23 @@ function MovieCard({ movie }: { movie: Movie }) {
               {((movie.vote_average || movie.tmdb_score) as number).toFixed(1)}
             </div>
           )}
+          <button
+            onClick={handleAddToWatchlist}
+            disabled={isSaving}
+            className={`absolute top-2 right-2 p-2 rounded-xl transition-all ${
+                isSaved 
+                ? "bg-green-500 text-white" 
+                : "bg-black/60 backdrop-blur-sm text-white hover:bg-purple-600"
+            }`}
+          >
+            {isSaving ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : isSaved ? (
+                <Check className="w-4 h-4" />
+            ) : (
+                <Bookmark className="w-4 h-4" />
+            )}
+          </button>
         </div>
 
         <div className="p-4 flex flex-col justify-between h-[120px]">
@@ -120,6 +165,7 @@ function MovieGrid({ movies, loading }: { movies: Movie[]; loading: boolean }) {
 function MoviesContent() {
   const searchParams = useSearchParams();
   const q = searchParams.get("q") || "";
+  const tag = searchParams.get("tag") || "";
   
   // Search state
   const [searchResults, setSearchResults] = useState<Movie[]>([]);
@@ -135,6 +181,10 @@ function MoviesContent() {
   const [moodMovies, setMoodMovies] = useState<Movie[]>([]);
   const [moodLoading, setMoodLoading] = useState(false);
   const [moodShuffleKey, setMoodShuffleKey] = useState(0);
+
+  // Tag state
+  const [tagMovies, setTagMovies] = useState<Movie[]>([]);
+  const [tagLoading, setTagLoading] = useState(false);
 
   // Load Search Results
   useEffect(() => {
@@ -187,6 +237,25 @@ function MoviesContent() {
     return () => { cancelled = true; };
   }, [activeMood, moodShuffleKey, q]);
 
+  // Load Tagged Movies
+  useEffect(() => {
+    if (!tag || q) return;
+    let cancelled = false;
+    setTagLoading(true);
+    getMoviesByTag(tag).then((data) => {
+      if (!cancelled) {
+        setTagMovies(data);
+        setTagLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setTagMovies([]);
+        setTagLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [tag, q]);
+
   const handleMoodClick = (moodValue: string) => {
     if (activeMood === moodValue) {
       // User tapped the active mood again -> Shuffle the mood films!
@@ -226,6 +295,30 @@ function MoviesContent() {
         {/* DEFAULT BROWSE VIEW */}
         {!q && (
           <>
+            {/* TAGGED MOVIES SECTION (IF TAG ACTIVE) */}
+            {tag && (
+              <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                    <h1 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tight capitalize">
+                      {tag === "new" ? "New Releases" : tag} Movies
+                    </h1>
+                  </div>
+                  <Link
+                    href="/movies"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-200 dark:bg-zinc-800 text-sm font-semibold hover:bg-gray-300 dark:hover:bg-zinc-700 transition"
+                  >
+                    <X className="w-4 h-4" /> Clear Filter
+                  </Link>
+                </div>
+                <MovieGrid movies={tagMovies} loading={tagLoading} />
+                <div className="mt-12 mb-8">
+                  <hr className="border-gray-200 dark:border-zinc-800/50" />
+                </div>
+              </section>
+            )}
+
             {/* RECOMMENDED FOR YOU SECTION */}
             <section>
               <div className="flex items-center justify-between mb-6">

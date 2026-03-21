@@ -1,18 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import { Footer } from "@/components/Footer";
 export const metadata: Metadata = {
   title: "RecME – Discover Your Next Favorite Movie",
   description:
@@ -26,16 +16,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className="antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <GoogleOAuthProvider clientId="857890854436-7bo0rjv0peum3gdsc24641bv51r7d5p6.apps.googleusercontent.com">
+            {children}
+            <Footer />
+          </GoogleOAuthProvider>
         </ThemeProvider>
       </body>
     </html>

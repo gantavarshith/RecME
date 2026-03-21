@@ -1,18 +1,18 @@
 "use client";
 
 import { AuroraBackground } from "@/components/ui/aurora-background";
-import { DisplayCardsDemo } from "@/components/ui/display-cards-demo";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { CategoryButtons } from "@/components/ui/category-buttons";
+import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
 import { Sparkles, MessageSquare, Play, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 export default function Home() {
   return (
-    <AuroraBackground>
-      <ThemeToggle />
+    <AuroraBackground className="flex-col !justify-start !items-stretch">
+      <Navbar />
 
-      <div className="w-full max-w-6xl mx-auto px-6 py-20 flex flex-col items-center text-center gap-8">
+      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl mx-auto px-6 py-20 gap-8 text-center">
         {/* Badge */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -83,7 +83,7 @@ export default function Home() {
           <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-zinc-500 mb-6">
             Browse Categories
           </p>
-          <DisplayCardsDemo />
+          <CategoryButtons />
         </motion.div>
       </div>
     </AuroraBackground>

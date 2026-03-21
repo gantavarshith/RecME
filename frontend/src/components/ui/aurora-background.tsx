@@ -30,10 +30,10 @@ export const AuroraBackground = ({
             ].join(", "),
             backgroundSize: "300%, 200%",
             backgroundPosition: "50% 50%, 50% 50%",
-            filter: "blur(10px) invert(1)",
+            filter: "blur(40px)",
           }}
           className={cn(
-            "absolute -inset-[10px] opacity-50 will-change-transform animate-aurora",
+            "absolute -inset-[10px] opacity-70 dark:opacity-0 will-change-transform animate-aurora",
             showRadialGradient &&
               "[mask-image:radial-gradient(ellipse_at_100%_0%,black_10%,transparent_70%)]"
           )}

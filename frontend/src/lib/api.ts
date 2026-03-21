@@ -1,15 +1,27 @@
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = 'http://localhost:8009';
 
 async function fetchAPI<T>(
   path: string,
-  options?: RequestInit
+  options: RequestInit = {}
 ): Promise<T> {
+  const { headers, ...restOptions } = options;
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...headers,
+    },
+    credentials: "include",
+    ...restOptions,
   });
   if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
+    let errorMsg = `API error: ${response.status} ${response.statusText}`;
+    try {
+      const data = await response.json();
+      if (data.detail) {
+        errorMsg = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+      }
+    } catch (e) {}
+    throw new Error(errorMsg);
   }
   return response.json();
 }
@@ -47,8 +59,75 @@ export const searchMovies = (query: string) =>
 export const getMoodRecommendations = (mood: string) =>
   fetchAPI<Movie[]>(`/mood/?mood=${encodeURIComponent(mood)}`);
 
+export const getMoviesByTag = (tag: string) =>
+  fetchAPI<Movie[]>(`/movies/tagged/${encodeURIComponent(tag)}`);
+
 export const sendMessageToChatbot = (message: string) =>
   fetchAPI<ChatResponse>("/chatbot/chat", {
     method: "POST",
     body: JSON.stringify({ message }),
+  });
+
+// AUTH ENDPOINTS
+export const loginUser = async (formData: FormData) => {
+  const params = new URLSearchParams();
+  formData.forEach((value, key) => {
+    params.append(key, value.toString());
+  });
+
+  const res = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    credentials: "include",
+    body: params,
+  });
+  
+  if (!res.ok) {
+    let errorMsg = "Login failed";
+    try {
+      const data = await res.json();
+      if (data.detail) errorMsg = data.detail;
+    } catch (e) {}
+    throw new Error(errorMsg);
+  }
+  return res.json();
+};
+
+export const signupUser = (data: any) =>
+  fetchAPI<any>("/auth/signup", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const googleLogin = (token: string) =>
+  fetchAPI<any>("/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+
+export const getMe = (token: string) =>
+  fetchAPI<any>("/auth/me", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+export const logoutUser = () =>
+  fetchAPI<any>("/auth/logout", { method: "POST" });
+
+// WATCHLIST ENDPOINTS
+export const getWatchlist = (token: string) =>
+  fetchAPI<Movie[]>("/watchlist", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+export const addToWatchlist = (movie: Movie, token: string) =>
+  fetchAPI<any>("/watchlist/add", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(movie),
+  });
+
+export const removeFromWatchlist = (movieId: string | number, token: string) =>
+  fetchAPI<any>(`/watchlist/remove/${movieId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
   });

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { sendMessageToChatbot } from "@/lib/api";
 import { Bot, Send, User, Sparkles } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   id: number;
@@ -62,7 +63,7 @@ export default function ChatbotPage() {
           id: msgId++,
           role: "assistant",
           content:
-            "Sorry, I had trouble connecting to the server. Make sure the backend is running on port 8000.",
+            "Sorry, I had trouble connecting to the server. Make sure the backend is running on port 8009.",
         },
       ]);
     } finally {
@@ -143,13 +144,26 @@ export default function ChatbotPage() {
 
                 {/* Bubble */}
                 <div
-                  className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
+                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
                     msg.role === "assistant"
-                      ? "bg-white dark:bg-zinc-900 text-gray-800 dark:text-zinc-200 border border-gray-100 dark:border-white/5 rounded-tl-sm"
+                      ? "bg-white dark:bg-zinc-900 text-gray-800 dark:text-zinc-200 border border-gray-100 dark:border-white/5 rounded-tl-sm prose dark:prose-invert max-w-none"
                       : "bg-purple-600 text-white rounded-tr-sm"
                   }`}
                 >
-                  {msg.content}
+                  {msg.role === "assistant" ? (
+                    <ReactMarkdown
+                      components={{
+                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                        ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
+                        li: ({ children }) => <li className="mb-1">{children}</li>,
+                        strong: ({ children }) => <strong className="font-bold text-purple-600 dark:text-purple-400">{children}</strong>,
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  ) : (
+                    msg.content
+                  )}
                 </div>
               </motion.div>
             ))}

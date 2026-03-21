@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Movie } from "@/lib/api";
+import { Movie, addToWatchlist } from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
 import {
   ArrowLeft,
   Star,
@@ -19,7 +20,7 @@ import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "http://localhost:8009";
 
 async function fetchMovieById(id: string): Promise<Movie | null> {
   // First try the numeric ID endpoint
@@ -52,6 +53,23 @@ export default function MovieDetailPage() {
   const router = useRouter();
   const [movie, setMovie] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
+  const token = useAuthStore((state) => state.token);
+
+  const handleWatchlist = async () => {
+    if (!token) {
+      alert("Please sign in to add to your watchlist.");
+      router.push("/login");
+      return;
+    }
+    if (!movie) return;
+    
+    try {
+      await addToWatchlist(movie, token);
+      alert(`Added ${movie.title} to your watchlist!`);
+    } catch (err: any) {
+      alert(err.message || "Failed to add to watchlist");
+    }
+  };
 
   useEffect(() => {
     fetchMovieById(id).then((m) => {
@@ -237,11 +255,15 @@ export default function MovieDetailPage() {
 
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-3">
-              <button className="flex items-center gap-2 px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition-all shadow-lg shadow-purple-600/20 hover:scale-[1.02] active:scale-95">
+              <button 
+                onClick={() => window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(movie.title + ' trailer')}`, '_blank')}
+                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition-all shadow-lg shadow-purple-600/20 hover:scale-[1.02] active:scale-95">
                 <Play className="w-4 h-4 fill-white" />
                 Watch Trailer
               </button>
-              <button className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white font-bold border border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10 transition-all hover:scale-[1.02] active:scale-95">
+              <button 
+                onClick={handleWatchlist}
+                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white font-bold border border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10 transition-all hover:scale-[1.02] active:scale-95">
                 <Bookmark className="w-4 h-4" />
                 Watchlist
               </button>
