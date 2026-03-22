@@ -3,9 +3,18 @@ import subprocess
 import sys
 import os
 
+def get_venv_bin(name):
+    if os.name == "nt":  # Windows
+        return os.path.join(".venv", "Scripts", f"{name}.exe")
+    return os.path.join(".venv", "bin", name)
+
 def run_api():
-    print("Starting FastAPI backend...")
-    subprocess.run(["uvicorn", "api.main:app", "--reload"], shell=True)
+    print("Starting FastAPI backend on port 8007...")
+    uvicorn_path = get_venv_bin("uvicorn")
+    if os.path.exists(uvicorn_path):
+        subprocess.run([uvicorn_path, "api.main:app", "--reload", "--port", "8007"], shell=True)
+    else:
+        subprocess.run(["uvicorn", "api.main:app", "--reload", "--port", "8007"], shell=True)
 
 def run_frontend():
     print("Starting React frontend...")
@@ -14,7 +23,11 @@ def run_frontend():
 
 def run_pipeline():
     print("Running training pipeline...")
-    subprocess.run(["python", "pipeline/training_pipeline.py"], shell=True)
+    python_path = get_venv_bin("python")
+    if os.path.exists(python_path):
+        subprocess.run([python_path, "pipeline/training_pipeline.py"], shell=True)
+    else:
+        subprocess.run(["python", "pipeline/training_pipeline.py"], shell=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="RecME Runner")

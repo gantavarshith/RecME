@@ -16,14 +16,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased">
+      <body className="antialiased" suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >
-          <GoogleOAuthProvider clientId="857890854436-7bo0rjv0peum3gdsc24641bv51r7d5p6.apps.googleusercontent.com">
+          <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "857890854436-7bo0rjv0peum3gdsc24641bv51r7d5p6.apps.googleusercontent.com"}>
             {children}
             <Footer />
           </GoogleOAuthProvider>

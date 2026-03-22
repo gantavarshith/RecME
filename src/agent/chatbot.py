@@ -1,33 +1,99 @@
 import os
-from dotenv import load_dotenv
+import httpx
+import json
+from typing import Optional, List
+from src.config.settings import settings
 
-load_dotenv()
+SYSTEM_PROMPT = """You are RecME AI — an expert film assistant.
+Your job is to handle ALL types of film-related queries intelligently.
+You must first understand the user's intent and then respond accordingly.
 
-SYSTEM_PROMPT = """You are RecME AI, a movie recommendation assistant.
-Your role is to help users discover movies based on their preferences in a clear, concise, and helpful way.
+There are 3 types of queries:
 
-STRICT RULES:
-1. ONLY respond to queries related to: Movies, TV shows, Actors, directors, genres, Recommendations and similar content.
-2. DO NOT answer: General knowledge, Coding, math, politics, or unrelated topics.
-3. If a query is unrelated, respond with: "I can only help with movies and entertainment recommendations. Try asking about a movie or genre!"
-4. Recommendation Format:
-   - Suggest 3–5 movies maximum.
-   - For each movie include: 
-     • **Title** (Year)
-     • Genre: [Genres]
-     • Reason: [1-line reason why it's recommended]
-5. If user gives vague input: Ask "What kind of movies are you in the mood for? (action, comedy, thriller, etc.)"
-6. Tone: Friendly, modern, slightly casual, not robotic.
+1. Recommendation Queries:
+- User asks for movie suggestions.
+- Format: 🎬 Movie Name (Year). Reason: ... (suggest 3–5 movies max, explain WHY for each).
+
+2. Informational Queries:
+- User asks facts about movies/actors/directors.
+- Format: Give direct, accurate answers.
+
+3. Analytical / Opinion Queries:
+- User asks for explanations or opinions.
+- Format: Explain clearly in 3–6 lines.
+
+RULES:
+- DO NOT recommend movies unless the user is asking for recommendations.
+- DO NOT refuse film-related questions.
+- Stay strictly within movies, actors, directors, genres, film industry.
+- Be concise but engaging. Avoid generic answers.
+- If unsure, say "Based on common knowledge" and answer reasonably.
 """
 
 class ChatbotAgent:
     def __init__(self):
-        self.api_key = os.getenv("LLM_API_KEY")
+        self.api_key = os.getenv("LLM_API_KEY") or settings.LLM_API_KEY
         self.system_prompt = SYSTEM_PROMPT
+    async def get_response(self, user_message: str, history: Optional[List[dict]] = None, context: str = ""):
+        """
+        Calls Gemini API with the system prompt, conversation history, and search context.
+        """
+        if not self.api_key:
+            return None
 
-    def get_response(self, user_message: str):
-        """
-        Placeholder for LLM call. For now, it delegates back to smart heuristics 
-        in the route but follows the formatting rules.
-        """
-        return None  # Signaling to use heuristics if LLM not configured
+        model_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.api_key}"
+        
+        # Prepare messages for Gemini format
+        messages = []
+        
+        # Add system prompt as a "user" instruction (Gemini-1.5 style) 
+        # or use system_instruction if supported by the endpoint version.
+        # For simplicity with this endpoint, we'll prefix the first message or use a preamble.
+        
+        full_system_msg = self.system_prompt
+        if context:
+            full_system_msg += f"\n\nUSEFUL MOVIE DATA FROM DATABASE:\n{context}\nUse this data to ensure accuracy if relevant."
+
+        contents = []
+
+        if history:
+            for msg in history:
+                role = "user" if msg["role"] == "user" else "model"
+                contents.append({
+                    "role": role,
+                    "parts": [{"text": msg["content"]}]
+                })
+
+        contents.append({
+            "role": "user",
+            "parts": [{"text": user_message}]
+        })
+
+        payload = {
+            "system_instruction": {
+                "parts": [{"text": full_system_msg}]
+            },
+            "contents": contents,
+            "generationConfig": {
+                "temperature": 0.7,
+                "topK": 40,
+                "topP": 0.95,
+                "maxOutputTokens": 1024,
+            }
+        }
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(model_url, json=payload, timeout=30.0)
+                data = response.json()
+                
+                if response.status_code != 200:
+                    error_msg = data.get("error", {}).get("message", "Unknown API error")
+                    return f"API Error ({response.status_code}): {error_msg}"
+                    
+                if "candidates" in data and len(data["candidates"]) > 0:
+                    text = data["candidates"][0]["content"]["parts"][0]["text"]
+                    return text
+                return "I'm sorry, I couldn't generate a response. Please try again."
+        except Exception as e:
+            return f"Network Error: {repr(e)}"

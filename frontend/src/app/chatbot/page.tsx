@@ -20,12 +20,12 @@ const QUICK_PROMPTS = [
   "Movies similar to Inception",
 ];
 
-let msgId = 0;
+let msgId = 1;
 
 export default function ChatbotPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: msgId++,
+      id: 0,
       role: "assistant",
       content:
         "Hey! I'm your RecME AI assistant 🎬. Ask me for movie recommendations, match me to your mood, or discover hidden gems. What are you in the mood to watch?",
@@ -33,10 +33,19 @@ export default function ChatbotPage() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const botContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (messages.length > 1 || loading) {
+    if (!botContainerRef.current) return;
+    
+    const container = botContainerRef.current;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+    
+    const lastMessage = messages[messages.length - 1];
+    
+    // Auto-scroll if it's a new user message OR if we were already at the bottom
+    if (lastMessage?.role === "user" || isNearBottom || loading) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, loading]);
@@ -53,7 +62,10 @@ export default function ChatbotPage() {
     setLoading(true);
 
     try {
-      const { response } = await sendMessageToChatbot(message);
+      // Prepare history for backend (exclude the current message)
+      const history = messages.map(m => ({ role: m.role, content: m.content }));
+      
+      const { response } = await sendMessageToChatbot(message, history);
       setMessages((prev) => [
         ...prev,
         { id: msgId++, role: "assistant", content: response },
@@ -65,7 +77,7 @@ export default function ChatbotPage() {
           id: msgId++,
           role: "assistant",
           content:
-            "Sorry, I had trouble connecting to the server. Make sure the backend is running on port 8007.",
+            "Sorry, I'm having trouble connecting to the server. Please check your internet connection or try again later.",
         },
       ]);
     } finally {
@@ -81,10 +93,11 @@ export default function ChatbotPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col">
+    <div className="h-[100dvh] bg-gray-50 dark:bg-zinc-950 flex flex-col overflow-hidden">
+      <style dangerouslySetInnerHTML={{ __html: `footer { display: none !important; } body { overflow: hidden !important; }` }} />
       <Navbar />
 
-      <div className="flex-1 max-w-3xl w-full mx-auto px-4 py-6 flex flex-col gap-4">
+      <div className="flex-1 max-w-3xl w-full mx-auto px-4 py-4 flex flex-col gap-4 min-h-0">
         {/* Header */}
         <div className="flex items-center gap-3 pb-2 border-b border-gray-200 dark:border-white/5">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg shadow-purple-600/20">
@@ -117,7 +130,7 @@ export default function ChatbotPage() {
         )}
 
         {/* Messages */}
-        <div className="flex-1 flex flex-col gap-4 overflow-auto">
+        <div ref={botContainerRef} className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1 pb-2">
           <AnimatePresence initial={false}>
             {messages.map((msg) => (
               <motion.div

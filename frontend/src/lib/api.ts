@@ -62,10 +62,10 @@ export const getMoodRecommendations = (mood: string) =>
 export const getMoviesByTag = (tag: string) =>
   fetchAPI<Movie[]>(`/movies/tagged/${encodeURIComponent(tag)}`);
 
-export const sendMessageToChatbot = (message: string) =>
+export const sendMessageToChatbot = (message: string, history: any[] = []) =>
   fetchAPI<ChatResponse>("/chatbot/chat", {
     method: "POST",
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, history }),
   });
 
 // AUTH ENDPOINTS
