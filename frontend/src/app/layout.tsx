@@ -23,7 +23,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "857890854436-7bo0rjv0peum3gdsc24641bv51r7d5p6.apps.googleusercontent.com"}>
+          <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "857890854436-sg00kq8ncrns00kqtkd15kl4flrvcj6k.apps.googleusercontent.com"}>
             {children}
             <Footer />
           </GoogleOAuthProvider>
