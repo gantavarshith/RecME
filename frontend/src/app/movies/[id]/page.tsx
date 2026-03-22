@@ -20,7 +20,7 @@ import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
-const API_BASE = "http://localhost:8007";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8007";
 
 async function fetchMovieById(id: string): Promise<Movie | null> {
   // First try the numeric ID endpoint

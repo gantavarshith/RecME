@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8007';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8007';
 
 async function fetchAPI<T>(
   path: string,
