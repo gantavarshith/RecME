@@ -137,7 +137,7 @@ export default function ProfilePage() {
                         : "bg-gray-100 dark:bg-zinc-800 text-gray-500"
                     }`}
                   >
-                    {(user as any).auth_provider === "google" ? "Google" : "Local"} Account
+                    {user.auth_provider === "google" ? "Google" : "Local"} Account
                   </span>
                 </div>
               </div>
