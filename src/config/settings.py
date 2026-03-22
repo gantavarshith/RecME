@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     MONGODB_URL: str = "mongodb://127.0.0.1:27017/recme"
     SECRET_KEY: str
     LLM_API_KEY: str
+    ALLOWED_ORIGINS: str = "*"
 
     class Config:
         env_file = ".env"
