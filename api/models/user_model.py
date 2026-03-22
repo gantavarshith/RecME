@@ -22,3 +22,6 @@ class UserOut(UserBase):
 
     class Config:
         from_attributes = True
+
+class UserUpdate(BaseModel):
+    name: str

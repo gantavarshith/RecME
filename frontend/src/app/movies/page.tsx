@@ -2,13 +2,14 @@
 
 import { useEffect, useState, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { searchMovies, getMoodRecommendations, getRecommendations, getMoviesByTag, Movie, addToWatchlist } from "@/lib/api";
-import { Search, Sparkles, TrendingUp, Star, Film, X, Shuffle, Bookmark, Check } from "lucide-react";
+import { searchMovies, getMoodRecommendations, getRecommendations, getMoviesByTag, Movie, getWatched } from "@/lib/api";
+import { Search, Sparkles, TrendingUp, X, Shuffle, Film } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { motion, AnimatePresence } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
-import Image from "next/image";
 import Link from "next/link";
+import { MovieCard } from "@/components/MovieCard";
+import { MovieOfTheDay } from "@/components/MovieOfTheDay";
 
 const MOODS = [
   { label: "Happy 😊", value: "happy" },
@@ -19,108 +20,18 @@ const MOODS = [
   { label: "Funny 😂", value: "comedy" },
 ];
 
-function MovieCard({ movie }: { movie: Movie }) {
-  const { token, isAuthenticated } = useAuthStore();
-  const [isSaved, setIsSaved] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+function MovieGrid({ 
+  movies, 
+  loading,
+  watchedIds,
+  onWatchedChange
+}: { 
+  movies: Movie[]; 
+  loading: boolean;
+  watchedIds?: Set<string | number>;
+  onWatchedChange?: (id: string | number, watched: boolean) => void;
+}) {
 
-  const handleAddToWatchlist = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!isAuthenticated) {
-        window.location.href = "/login";
-        return;
-    }
-
-    if (token) {
-        setIsSaving(true);
-        try {
-            await addToWatchlist(movie, token);
-            setIsSaved(true);
-            setTimeout(() => setIsSaved(false), 2000);
-        } catch (err) {
-            console.error("Failed to add to watchlist", err);
-        } finally {
-            setIsSaving(false);
-        }
-    }
-  };
-
-  const movieId = movie.id?.toString() || encodeURIComponent(movie.title);
-  const posterUrl = movie.poster_path
-    ? movie.poster_path.startsWith("http")
-      ? movie.poster_path
-      : `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-    : null;
-
-  return (
-    <Link href={`/movies/${movieId}`}>
-      <motion.div
-        whileHover={{ y: -6, scale: 1.02 }}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        className="group relative bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-xl hover:border-purple-200 dark:hover:border-purple-900/50 transition-all duration-300 cursor-pointer h-full"
-      >
-        <div className="relative aspect-[2/3] overflow-hidden bg-gray-100 dark:bg-zinc-800">
-          {posterUrl ? (
-            <img
-              src={posterUrl}
-              alt={movie.title}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-zinc-600">
-              <Film className="w-12 h-12" />
-            </div>
-          )}
-          {(movie.vote_average || movie.tmdb_score) && (
-            <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-sm text-yellow-400 text-xs font-bold">
-              <Star className="w-3 h-3 fill-yellow-400" />
-              {((movie.vote_average || movie.tmdb_score) as number).toFixed(1)}
-            </div>
-          )}
-          <button
-            onClick={handleAddToWatchlist}
-            disabled={isSaving}
-            className={`absolute top-2 right-2 p-2 rounded-xl transition-all ${
-                isSaved 
-                ? "bg-green-500 text-white" 
-                : "bg-black/60 backdrop-blur-sm text-white hover:bg-purple-600"
-            }`}
-          >
-            {isSaving ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : isSaved ? (
-                <Check className="w-4 h-4" />
-            ) : (
-                <Bookmark className="w-4 h-4" />
-            )}
-          </button>
-        </div>
-
-        <div className="p-4 flex flex-col justify-between h-[120px]">
-          <div>
-            <h3 className="font-bold text-gray-900 dark:text-white text-sm line-clamp-1 mb-1">
-              {movie.title}
-            </h3>
-            {movie.release_date && (
-              <p className="text-xs text-gray-400 dark:text-zinc-500">
-                {new Date(movie.release_date).getFullYear()}
-              </p>
-            )}
-            {movie.overview && (
-              <p className="text-xs text-gray-500 dark:text-zinc-400 line-clamp-2 mt-2">
-                {movie.overview}
-              </p>
-            )}
-          </div>
-        </div>
-      </motion.div>
-    </Link>
-  );
-}
-
-function MovieGrid({ movies, loading }: { movies: Movie[]; loading: boolean }) {
   if (loading) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -155,7 +66,11 @@ function MovieGrid({ movies, loading }: { movies: Movie[]; loading: boolean }) {
           transition={{ duration: 0.2, delay: i * 0.02 }}
           className="h-full"
         >
-          <MovieCard movie={movie} />
+          <MovieCard 
+            movie={movie} 
+            isWatchedInitial={watchedIds?.has(movie.id as string | number)}
+            onWatchedChange={onWatchedChange}
+          />
         </motion.div>
       ))}
     </div>
@@ -163,6 +78,7 @@ function MovieGrid({ movies, loading }: { movies: Movie[]; loading: boolean }) {
 }
 
 function MoviesContent() {
+  const { token, isAuthenticated } = useAuthStore();
   const searchParams = useSearchParams();
   const q = searchParams.get("q") || "";
   const tag = searchParams.get("tag") || "";
@@ -185,6 +101,28 @@ function MoviesContent() {
   // Tag state
   const [tagMovies, setTagMovies] = useState<Movie[]>([]);
   const [tagLoading, setTagLoading] = useState(false);
+
+  // Watched state
+  const [watchedIds, setWatchedIds] = useState<Set<string | number>>(new Set());
+
+  // Fetch watched IDs
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      getWatched(token).then(data => {
+        setWatchedIds(new Set(data.map(m => m.id as string | number)));
+      }).catch(console.error);
+    }
+  }, [isAuthenticated, token]);
+
+  const handleWatchedChange = (id: string | number, watched: boolean) => {
+    setWatchedIds(prev => {
+      const next = new Set(prev);
+      if (watched) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
 
   // Load Search Results
   useEffect(() => {
@@ -288,13 +226,31 @@ function MoviesContent() {
                 <X className="w-4 h-4" /> Clear Search
               </Link>
             </div>
-            <MovieGrid movies={searchResults} loading={searchLoading} />
+            <MovieGrid 
+              movies={searchResults} 
+              loading={searchLoading} 
+              watchedIds={watchedIds}
+              onWatchedChange={handleWatchedChange}
+            />
+
           </section>
         )}
 
         {/* DEFAULT BROWSE VIEW */}
         {!q && (
           <>
+            {/* MOVIE OF THE DAY */}
+            {!tag && (
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+                    🎬 Movie of the Day
+                  </h2>
+                </div>
+                <MovieOfTheDay />
+              </section>
+            )}
+
             {/* TAGGED MOVIES SECTION (IF TAG ACTIVE) */}
             {tag && (
               <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -312,7 +268,13 @@ function MoviesContent() {
                     <X className="w-4 h-4" /> Clear Filter
                   </Link>
                 </div>
-                <MovieGrid movies={tagMovies} loading={tagLoading} />
+                <MovieGrid 
+                  movies={tagMovies} 
+                  loading={tagLoading} 
+                  watchedIds={watchedIds}
+                  onWatchedChange={handleWatchedChange}
+                />
+
                 <div className="mt-12 mb-8">
                   <hr className="border-gray-200 dark:border-zinc-800/50" />
                 </div>
@@ -392,7 +354,13 @@ function MoviesContent() {
                         Curated for {MOODS.find(m => m.value === activeMood)?.label.split(" ")[0]}
                       </h3>
                     </div>
-                    <MovieGrid movies={moodMovies} loading={moodLoading} />
+                    <MovieGrid 
+                    movies={moodMovies} 
+                    loading={moodLoading} 
+                    watchedIds={watchedIds}
+                    onWatchedChange={handleWatchedChange}
+                  />
+
                   </motion.div>
                 </AnimatePresence>
               )}

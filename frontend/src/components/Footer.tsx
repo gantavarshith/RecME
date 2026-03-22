@@ -59,7 +59,8 @@ export function Footer() {
                 { name: "Home", href: "/" },
                 { name: "Recommendations", href: "/movies" },
                 { name: "Watchlist", href: "/watchlist" },
-                { name: "About", href: "/about" },
+                { name: "Watched", href: "/watched" },
+
               ].map((link) => (
                 <li key={link.name}>
                   <Link href={link.href} className="text-gray-500 dark:text-zinc-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-sm flex items-center group w-fit">

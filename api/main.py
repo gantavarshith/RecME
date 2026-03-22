@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from motor.motor_asyncio import AsyncIOMotorClient
 from src.config.settings import settings
-from api.routes import recommend, search, mood, chatbot, movies, auth, watchlist
+from api.routes import recommend, search, mood, chatbot, movies, auth, watchlist, watched, motd
+
 from fastapi.middleware.cors import CORSMiddleware
 
 @asynccontextmanager
@@ -44,6 +45,8 @@ app.include_router(chatbot.router, prefix="/chatbot", tags=["AI Chatbot"])
 app.include_router(movies.router, prefix="/movies", tags=["Movies"])
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(watchlist.router, prefix="/watchlist", tags=["Watchlist"])
+app.include_router(watched.router, prefix="/watched", tags=["Watched"])
+app.include_router(motd.router, prefix="/motd", tags=["Movie of the Day"])
 
 @app.get("/")
 def read_root():

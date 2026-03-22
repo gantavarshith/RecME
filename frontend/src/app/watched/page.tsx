@@ -3,16 +3,16 @@
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
-import { Loader2, Bookmark, Film, Plus, Trash2 } from "lucide-react";
+import { Loader2, CheckCircle2, Film, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getWatchlist, removeFromWatchlist, Movie } from "@/lib/api";
+import { getWatched, removeFromWatched, Movie } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 
 import { MovieCard } from "@/components/MovieCard";
 
-export default function WatchlistPage() {
+export default function WatchedPage() {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { token, isAuthenticated } = useAuthStore();
@@ -24,26 +24,26 @@ export default function WatchlistPage() {
       return;
     }
 
-    const fetchWatchlist = async () => {
+    const fetchWatched = async () => {
       try {
         if (token) {
-          const data = await getWatchlist(token);
+          const data = await getWatched(token);
           setMovies(data);
         }
       } catch (err) {
-        console.error("Failed to fetch watchlist:", err);
+        console.error("Failed to fetch watched list:", err);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchWatchlist();
+    fetchWatched();
   }, [isAuthenticated, token, router]);
 
   const handleRemove = async (movieId: string | number) => {
     if (token) {
       try {
-        await removeFromWatchlist(movieId, token);
+        await removeFromWatched(movieId, token);
         setMovies(movies.filter(m => m.id !== movieId));
       } catch (err) {
         console.error("Failed to remove movie:", err);
@@ -68,15 +68,15 @@ export default function WatchlistPage() {
       <main className="flex-1 px-6 py-20">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-4 mb-12">
-            <div className="p-3 bg-purple-500/10 rounded-2xl text-purple-600 dark:text-purple-400">
-              <Bookmark className="w-8 h-8" />
+            <div className="p-3 bg-green-500/10 rounded-2xl text-green-600 dark:text-green-400">
+              <CheckCircle2 className="w-8 h-8" />
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">
-                My Watchlist
+                Watched Movies
               </h1>
               <p className="text-gray-500 dark:text-zinc-400">
-                {movies.length} films saved to your profile
+                You've logged {movies.length} films
               </p>
             </div>
           </div>
@@ -85,9 +85,9 @@ export default function WatchlistPage() {
             <div className="flex flex-col items-center justify-center py-20 text-center gap-6 bg-white/5 dark:bg-zinc-900/30 backdrop-blur-xl border border-white/10 rounded-[2rem]">
                 <Film className="w-16 h-16 text-gray-300 dark:text-zinc-700" />
                 <div className="space-y-2">
-                    <h2 className="text-xl font-bold dark:text-white">Your list is empty</h2>
+                    <h2 className="text-xl font-bold dark:text-white">Your history is empty</h2>
                     <p className="text-gray-500 dark:text-zinc-400 max-w-sm">
-                        Start exploring our massive collection and save the films you want to watch later.
+                        Mark movies as watched to see them here and get better recommendations.
                     </p>
                 </div>
                 <Link
@@ -104,6 +104,7 @@ export default function WatchlistPage() {
                 <MovieCard 
                   key={movie.id} 
                   movie={movie} 
+                  isWatchedInitial={true}
                   onRemove={handleRemove}
                 />
               ))}

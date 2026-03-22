@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8009';
+const API_BASE_URL = 'http://localhost:8007';
 
 async function fetchAPI<T>(
   path: string,
@@ -128,6 +128,46 @@ export const addToWatchlist = (movie: Movie, token: string) =>
 
 export const removeFromWatchlist = (movieId: string | number, token: string) =>
   fetchAPI<any>(`/watchlist/remove/${movieId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+// WATCHED ENDPOINTS
+export const getWatched = (token: string) =>
+  fetchAPI<Movie[]>("/watched", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+export const addToWatched = (movie: Movie, token: string) =>
+  fetchAPI<any>("/watched/add", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(movie),
+  });
+
+export const removeFromWatched = (movieId: string | number, token: string) =>
+  fetchAPI<any>(`/watched/remove/${movieId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+// MOVIE OF THE DAY
+export const getMovieOfTheDay = (token?: string) =>
+  fetchAPI<Movie>("/motd/", token
+    ? { headers: { Authorization: `Bearer ${token}` } }
+    : {}
+  );
+
+// PROFILE
+export const updateProfile = (name: string, token: string) =>
+  fetchAPI<any>("/auth/profile", {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ name }),
+  });
+
+export const deleteAccount = (token: string) =>
+  fetchAPI<any>("/auth/account", {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });

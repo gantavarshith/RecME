@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.security import OAuth2PasswordRequestForm
-from api.models.user_model import UserCreate, UserOut, UserInDB
+from api.models.user_model import UserCreate, UserOut, UserInDB, UserUpdate
 from api.core.security import get_password_hash, verify_password, create_access_token
 from api.dependencies import get_db, get_current_user
 from google.oauth2 import id_token
@@ -113,6 +113,34 @@ async def google_auth(response: Response, data: dict, db = Depends(get_db)):
 @router.get("/me", response_model=UserOut)
 async def get_me(current_user: UserOut = Depends(get_current_user)):
     return current_user
+
+@router.put("/profile", response_model=UserOut)
+async def update_profile(
+    data: UserUpdate,
+    current_user: UserOut = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Update the authenticated user's name."""
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": {"name": data.name}}
+    )
+    updated = await db.users.find_one({"id": current_user.id})
+    return UserOut(**updated)
+
+@router.delete("/account")
+async def delete_account(
+    response: Response,
+    current_user: UserOut = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Permanently delete the user account and all associated data."""
+    uid = current_user.id
+    await db.users.delete_one({"id": uid})
+    await db.watchlist.delete_many({"user_id": uid})
+    await db.watched.delete_many({"user_id": uid})
+    response.delete_cookie("access_token")
+    return {"message": "Account deleted successfully"}
 
 @router.post("/logout")
 async def logout(response: Response):

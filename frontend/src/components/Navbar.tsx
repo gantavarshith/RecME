@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Film, MessageSquare, Search, X, Bookmark, UserCircle, LogOut, LogIn } from "lucide-react";
+import { Film, MessageSquare, Search, X, Bookmark, UserCircle, LogOut, LogIn, Check } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 import React, { useState } from "react";
@@ -12,7 +12,9 @@ const navLinks = [
   { href: "/movies", label: "Movies" },
   { href: "/chatbot", label: "AI Chatbot", icon: MessageSquare },
   { href: "/watchlist", label: "Watchlist", icon: Bookmark },
+  { href: "/watched", label: "Watched", icon: Check },
 ];
+
 
 export function Navbar() {
   const pathname = usePathname();
@@ -94,14 +96,18 @@ export function Navbar() {
           
           {isAuthenticated ? (
             <div className="flex items-center gap-3 ml-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
+              <Link
+                href="/profile"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-colors"
+                title="My Profile"
+              >
                 <div className="w-6 h-6 rounded-full bg-purple-600 flex items-center justify-center text-white text-[10px] font-black uppercase">
                   {user?.name.charAt(0)}
                 </div>
                 <span className="text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:inline">
                   {user?.name.split(" ")[0]}
                 </span>
-              </div>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-all"

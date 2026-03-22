@@ -20,7 +20,7 @@ import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
-const API_BASE = "http://localhost:8009";
+const API_BASE = "http://localhost:8007";
 
 async function fetchMovieById(id: string): Promise<Movie | null> {
   // First try the numeric ID endpoint

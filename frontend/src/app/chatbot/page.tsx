@@ -36,7 +36,9 @@ export default function ChatbotPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length > 1 || loading) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages, loading]);
 
   const send = async (text?: string) => {
@@ -63,7 +65,7 @@ export default function ChatbotPage() {
           id: msgId++,
           role: "assistant",
           content:
-            "Sorry, I had trouble connecting to the server. Make sure the backend is running on port 8009.",
+            "Sorry, I had trouble connecting to the server. Make sure the backend is running on port 8007.",
         },
       ]);
     } finally {
