@@ -41,7 +41,7 @@ class ChatbotAgent:
         if not self.api_key:
             return None
 
-        model_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={self.api_key}"
+        model_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.api_key}"
         
         # Prepare messages for Gemini format
         messages = []
@@ -82,18 +82,31 @@ class ChatbotAgent:
             }
         }
 
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(model_url, json=payload, timeout=30.0)
-                data = response.json()
-                
-                if response.status_code != 200:
-                    error_msg = data.get("error", {}).get("message", "Unknown API error")
-                    return f"API Error ({response.status_code}): {error_msg}"
+        import asyncio
+        for attempt in range(3):
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(model_url, json=payload, timeout=30.0)
+                    data = response.json()
                     
-                if "candidates" in data and len(data["candidates"]) > 0:
-                    text = data["candidates"][0]["content"]["parts"][0]["text"]
-                    return text
-                return "I'm sorry, I couldn't generate a response. Please try again."
-        except Exception as e:
-            return f"Network Error: {repr(e)}"
+                    if response.status_code == 429:
+                        print(f"[GEMINI 429] Rate limit hit. Retrying in {attempt + 1}s...")
+                        await asyncio.sleep(attempt + 1)
+                        continue
+
+                    if response.status_code != 200:
+                        error_msg = data.get("error", {}).get("message", "Unknown API error")
+                        print(f"[GEMINI ERROR] {response.status_code}: {data}")
+                        return f"API Error ({response.status_code}): {error_msg}"
+                        
+                    if "candidates" in data and len(data["candidates"]) > 0:
+                        text = data["candidates"][0]["content"]["parts"][0]["text"]
+                        return text
+                    return "I'm sorry, I couldn't generate a response. Please try again."
+            except Exception as e:
+                if attempt < 2:
+                    await asyncio.sleep(1)
+                    continue
+                return f"Network Error: {repr(e)}"
+        
+        return "I'm having trouble connecting to my AI core (Rate Limit). Please try again in a few seconds."

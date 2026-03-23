@@ -40,8 +40,8 @@ async def chat_with_agent(request: ChatRequest):
         if ai_response is None:
             return {"response": "I need a valid API key to function. Please set your LLM_API_KEY in the .env file! 🎬"}
             
-        # 4. Smart Fallback if API fails (e.g. 403/404 because key lacks Gemini permissions)
-        if "API Error" in ai_response or "Network Error" in ai_response:
+        # 4. Smart Fallback if API fails (e.g. 403/404 because key lacks Gemini permissions or 429 Rate Limit)
+        if any(term in ai_response for term in ["API Error", "Network Error", "Rate Limit"]):
             if context_movies:
                 fallback = "I'm having a little trouble connecting to my neural net right now, but based on your request, I found these great matches in our database:\n\n"
                 for m in context_movies[:3]:

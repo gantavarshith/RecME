@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { useAuthStore } from "@/store/authStore";
-import { updateProfile, deleteAccount } from "@/lib/api";
+import { updateProfile, deleteAccount, getUserStats } from "@/lib/api";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -29,25 +29,57 @@ export default function ProfilePage() {
   const [nameSaving, setNameSaving] = useState(false);
   const [nameError, setNameError] = useState("");
 
+  const [isClient, setIsClient] = useState(false);
+  const [stats, setStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
+  // Hydration guard for Next.js
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (isClient && !isAuthenticated) {
       router.push("/login");
+      return;
     }
-  }, [isAuthenticated, router]);
 
-  if (!isAuthenticated || !user) return null;
+    const fetchStats = async () => {
+      if (!token) return;
+      try {
+        const data = await getUserStats(token);
+        setStats(data);
+      } catch (err) {
+        console.error("Failed to fetch stats:", err);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
 
-  const joinedDate = new Date().toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+    if (isClient && isAuthenticated) {
+      fetchStats();
+    }
+  }, [isClient, isAuthenticated, token, router]);
+
+  if (!isClient || !isAuthenticated || !user) return null;
+
+  const joinedDate = user.created_at 
+    ? new Date(user.created_at).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
 
   const startEditing = () => {
     setNameInput(user.name);
@@ -100,10 +132,8 @@ export default function ProfilePage() {
     .slice(0, 2);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
-      <Navbar />
-
-      <div className="max-w-2xl mx-auto px-4 py-12">
+    <main className="flex-1 w-full max-w-4xl mx-auto px-6 py-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="space-y-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -239,6 +269,41 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          {/* User Stats Card */}
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-100 dark:border-white/5 shadow-sm p-6">
+            <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest mb-4">
+              My Viewing Stats
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-purple-500/5 border border-purple-500/10">
+                <p className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-1">
+                  Top Genre
+                </p>
+                <div className="text-xl font-black text-gray-900 dark:text-white">
+                  {loadingStats ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
+                  ) : stats?.top_genre && stats.top_genre !== "N/A" ? (
+                    stats.top_genre
+                  ) : (
+                    <span className="text-xs font-normal text-gray-400">Watch 10 films to unlock</span>
+                  )}
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10">
+                <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">
+                  Films Watched
+                </p>
+                <p className="text-xl font-black text-gray-900 dark:text-white">
+                  {loadingStats ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
+                  ) : (
+                    stats?.watched_count || 0
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Danger Zone */}
           <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-red-100 dark:border-red-900/20 shadow-sm p-6">
             <div className="flex items-center gap-2 mb-1">
@@ -327,6 +392,6 @@ export default function ProfilePage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </main>
   );
 }

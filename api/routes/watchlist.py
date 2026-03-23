@@ -12,6 +12,7 @@ class WatchlistMovie(BaseModel):
     poster_path: str | None = None
     vote_average: float | None = None
     release_date: str | None = None
+    genres: List[str] = []
 
 @router.get("/", response_model=List[WatchlistMovie])
 async def get_watchlist(current_user: UserOut = Depends(get_current_user), db = Depends(get_db)):

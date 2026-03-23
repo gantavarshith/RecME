@@ -291,9 +291,7 @@ function MoviesContent() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-20">
-      <Navbar />
-      
+    <main className="min-h-screen pb-20">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-16">
         
         {/* SEARCH RESULTS VIEW */}

@@ -318,18 +318,32 @@ async def get_movies_by_tag(tag: str, limit: int = 20) -> list[dict]:
 
 
 async def search_films(query: str, page: int = 1) -> list[dict]:
+    query = query.lower().strip()
+    if not query:
+        return []
+
+    cache_key = f"search:{query}:{page}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     # Direct fetch matching the test script to avoid connection issues
     async with httpx.AsyncClient() as client:
         try:
             r = await client.get(
                 f"{TMDB_BASE}/search/movie",
-                params={"api_key": TMDB_KEY, "query": query, "page": 1},
+                params={"api_key": TMDB_KEY, "query": query, "page": page},
                 timeout=10,
             )
             data = r.json()
             raw = data.get("results", [])
+            # Sort by popularity/rating blend
             raw.sort(key=lambda m: (m.get("vote_average") or 0) * (m.get("popularity") or 1), reverse=True)
-            return [_shape(m) for m in raw[:30] if m.get("poster_path")]
+            result = [_shape(m) for m in raw[:30] if m.get("poster_path")]
+            
+            if result:
+                _cache_set(cache_key, result)
+            return result
         except Exception as e:
             print("Search films error:", e)
             return []

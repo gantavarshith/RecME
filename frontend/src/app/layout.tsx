@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { GoogleOAuthProvider } from "@react-oauth/google";
-import { Footer } from "@/components/Footer";
+import { ClientLayout } from "@/components/ClientLayout";
+
 export const metadata: Metadata = {
   title: "RecME – Discover Your Next Favorite Movie",
   description:
@@ -16,7 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased" suppressHydrationWarning>
+      <body className="antialiased font-sans" suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
@@ -24,8 +25,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "857890854436-sg00kq8ncrns00kqtkd15kl4flrvcj6k.apps.googleusercontent.com"}>
-            {children}
-            <Footer />
+            <ClientLayout>
+              {children}
+            </ClientLayout>
           </GoogleOAuthProvider>
         </ThemeProvider>
       </body>

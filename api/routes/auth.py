@@ -146,3 +146,58 @@ async def delete_account(
 async def logout(response: Response):
     response.delete_cookie("access_token")
     return {"message": "Logged out successfully"}
+
+@router.get("/stats")
+async def get_stats(
+    current_user: UserOut = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Calculate user analytics based on watched history."""
+    # FETCH: Strictly user-specific data from 'watched' collection
+    watched_cursor = db.watched.find({"user_id": current_user.id})
+    watched = await watched_cursor.to_list(length=1000)
+    
+    # DEBUG: Print user unique stats to backend console (verified per user)
+    print(f"[STATS] Calculating user-specific analytics for {current_user.email} (ID: {current_user.id}). Found {len(watched)} films.")
+    
+    genre_counts = {}
+
+    for entry in watched:
+        movie_data = entry.get("movie_data", {})
+        
+        # Flattened Genre Calculation (surgical)
+        raw_genres = movie_data.get("genres") or []
+        
+        # Ensure we always process as a flat list
+        if isinstance(raw_genres, (str, dict)):
+            raw_genres = [raw_genres]
+            
+        for g in raw_genres:
+            # Handle recursive lists or TMDB objects
+            if isinstance(g, list):
+                # Flatten one level deep
+                for sub_g in g:
+                    name = sub_g if isinstance(sub_g, str) else sub_g.get("name", "") if isinstance(sub_g, dict) else ""
+                    if name:
+                        norm = name.strip().title()
+                        genre_counts[norm] = genre_counts.get(norm, 0) + 1
+            else:
+                name = g if isinstance(g, str) else g.get("name", "") if isinstance(g, dict) else ""
+                if name:
+                    norm = name.strip().title()
+                    genre_counts[norm] = genre_counts.get(norm, 0) + 1
+            
+    # Sort and get top genre (Require at least 10 films for an accurate 'Top Genre')
+    top_genre = "N/A"
+    if len(watched) >= 10:
+        sorted_genres = sorted(genre_counts.items(), key=lambda x: x[1], reverse=True)
+        top_genre = sorted_genres[0][0] if sorted_genres else "N/A"
+    else:
+        # Just sort to get genre distribution even if not showing top one
+        sorted_genres = sorted(genre_counts.items(), key=lambda x: x[1], reverse=True)
+
+    return {
+        "top_genre": top_genre,
+        "watched_count": len(watched),
+        "genre_distribution": dict(sorted_genres[:5])
+    }

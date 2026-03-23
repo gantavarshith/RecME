@@ -44,10 +44,8 @@ export default function SignupPage() {
   };
 
   return (
-    <AuroraBackground className="flex-col !justify-start !items-stretch">
-      <Navbar />
-      <main className="flex-1 flex items-center justify-center px-6 py-12">
-        <motion.div
+    <main className="flex-1 flex flex-col items-center justify-center p-6">
+      <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-md p-8 bg-white/5 dark:bg-zinc-950/30 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl"
@@ -146,7 +144,6 @@ export default function SignupPage() {
             </Link>
           </p>
         </motion.div>
-      </main>
-    </AuroraBackground>
+    </main>
   );
 }

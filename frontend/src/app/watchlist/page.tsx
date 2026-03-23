@@ -51,66 +51,79 @@ export default function WatchlistPage() {
     }
   };
 
+  // Hydration guard for Next.js
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => setIsClient(true), []);
+
+  if (!isClient) return null;
+
   if (isLoading) {
     return (
-      <AuroraBackground className="flex-col !justify-start !items-stretch">
-        <Navbar />
-        <main className="flex-1 flex flex-col items-center justify-center">
-          <Loader2 className="w-10 h-10 text-purple-600 animate-spin" />
-        </main>
-      </AuroraBackground>
+      <main className="flex-1 px-6 py-20">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center gap-4 mb-12 animate-pulse">
+              <div className="w-16 h-16 rounded-2xl bg-gray-200 dark:bg-zinc-800" />
+              <div className="space-y-2">
+                <div className="w-48 h-8 bg-gray-200 dark:bg-zinc-800 rounded-lg" />
+                <div className="w-32 h-4 bg-gray-100 dark:bg-zinc-900 rounded-md" />
+              </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {[...Array(10)].map((_, i) => (
+              <div key={i} className="aspect-[2/3] rounded-3xl bg-gray-200 dark:bg-zinc-800 animate-pulse outline outline-1 outline-white/10" />
+            ))}
+          </div>
+        </div>
+      </main>
     );
   }
 
   return (
-    <AuroraBackground className="flex-col !justify-start !items-stretch">
-      <Navbar />
-      <main className="flex-1 px-6 py-20">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center gap-4 mb-12">
-            <div className="p-3 bg-purple-500/10 rounded-2xl text-purple-600 dark:text-purple-400">
-              <Bookmark className="w-8 h-8" />
-            </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">
-                My Watchlist
-              </h1>
-              <p className="text-gray-500 dark:text-zinc-400">
-                {movies.length} films saved to your profile
-              </p>
-            </div>
+    <main className="flex-1 px-6 py-20">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center gap-4 mb-12">
+          <div className="p-3 bg-purple-500/10 rounded-2xl text-purple-600 dark:text-purple-400">
+            <Bookmark className="w-8 h-8" />
           </div>
-
-          {movies.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center gap-6 bg-white/5 dark:bg-zinc-900/30 backdrop-blur-xl border border-white/10 rounded-[2rem]">
-                <Film className="w-16 h-16 text-gray-300 dark:text-zinc-700" />
-                <div className="space-y-2">
-                    <h2 className="text-xl font-bold dark:text-white">Your list is empty</h2>
-                    <p className="text-gray-500 dark:text-zinc-400 max-w-sm">
-                        Start exploring our massive collection and save the films you want to watch later.
-                    </p>
-                </div>
-                <Link
-                  href="/movies"
-                  className="mt-2 flex items-center gap-2 px-6 py-3 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition"
-                >
-                  <Plus className="w-4 h-4" />
-                  Explore Movies
-                </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-              {movies.map((movie) => (
-                <MovieCard 
-                  key={movie.id} 
-                  movie={movie} 
-                  onRemove={handleRemove}
-                />
-              ))}
-            </div>
-          )}
+          <div>
+            <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">
+              My Watchlist
+            </h1>
+            <p className="text-gray-500 dark:text-zinc-400">
+              {movies.length} films saved to your profile
+            </p>
+          </div>
         </div>
-      </main>
-    </AuroraBackground>
+
+        {movies.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center gap-6 bg-white/5 dark:bg-zinc-900/30 backdrop-blur-xl border border-white/10 rounded-[2rem]">
+              <Film className="w-16 h-16 text-gray-300 dark:text-zinc-700" />
+              <div className="space-y-2">
+                  <h2 className="text-xl font-bold dark:text-white">Your list is empty</h2>
+                  <p className="text-gray-500 dark:text-zinc-400 max-w-sm">
+                      Start exploring our massive collection and save the films you want to watch later.
+                  </p>
+              </div>
+              <Link
+                href="/movies"
+                className="mt-2 flex items-center gap-2 px-6 py-3 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition"
+              >
+                <Plus className="w-4 h-4" />
+                Explore Movies
+              </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {movies.map((movie) => (
+              <MovieCard 
+                key={movie.id} 
+                movie={movie} 
+                onRemove={handleRemove}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </main>
   );
 }

@@ -6,6 +6,9 @@ import { Star, Film, Bookmark, Check, Eye, Loader2, Trash2, XCircle } from "luci
 import Link from "next/link";
 import { Movie, addToWatchlist, addToWatched, addToNotInterested } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { cn } from "@/lib/utils";
 
 interface MovieCardProps {
   movie: Movie;
@@ -30,6 +33,7 @@ export function MovieCard({
   const [isWatched, setIsWatched] = useState(isWatchedInitial);
   const [isWatching, setIsWatching] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
     setIsWatched(isWatchedInitial);
@@ -49,9 +53,11 @@ export function MovieCard({
         try {
             await addToWatchlist(movie, token);
             setIsSaved(true);
+            toast.success(`" ${movie.title} " added to Watchlist 🎬`);
             setTimeout(() => setIsSaved(false), 2000);
         } catch (err) {
             console.error("Failed to add to watchlist", err);
+            toast.error(`Could not add "${movie.title}" to watchlist.`);
         } finally {
             setIsSaving(false);
         }
@@ -73,10 +79,18 @@ export function MovieCard({
             if (!isWatched) {
                 await addToWatched(movie, token);
                 setIsWatched(true);
+                toast.success(`Marked " ${movie.title} " as Watched ✅`);
                 if (onWatchedChange) onWatchedChange(movie.id, true);
+                
+                // If we are in the watchlist (indicated by onRemove being present),
+                // we should remove it from the UI since the backend already removed it from the watchlist collection.
+                if (onRemove) {
+                    onRemove(movie.id);
+                }
             }
         } catch (err) {
             console.error("Failed to update watched status", err);
+            toast.error(`Could not mark "${movie.title}" as watched.`);
         } finally {
             setIsWatching(false);
         }
@@ -95,9 +109,11 @@ export function MovieCard({
     if (token && movie.id) {
         try {
             await addToNotInterested(movie, token);
+            toast.info(`Moved " ${movie.title} " to Not Interested 🚫`);
             if (onNotInterestedChange) onNotInterestedChange(movie.id);
         } catch (err) {
             console.error("Failed to mark as not interested", err);
+            toast.error(`Could not update preference for "${movie.title}".`);
         }
     }
   };
@@ -130,11 +146,18 @@ export function MovieCard({
         className={`group relative bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-xl hover:border-purple-200 dark:hover:border-purple-900/50 transition-all duration-300 cursor-pointer h-full ${isWatched ? 'opacity-60 saturate-50' : ''}`}
       >
         <div className="relative aspect-[2/3] overflow-hidden bg-gray-100 dark:bg-zinc-800">
+          {!imageLoaded && posterUrl && (
+            <Skeleton className="absolute inset-0 z-10 w-full h-full" />
+          )}
           {posterUrl ? (
             <img
               src={posterUrl}
               alt={movie.title}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              onLoad={() => setImageLoaded(true)}
+              className={cn(
+                "w-full h-full object-cover transition-all duration-700 group-hover:scale-105",
+                !imageLoaded ? "opacity-0 scale-110 blur-sm" : "opacity-100 scale-100 blur-0"
+              )}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-zinc-600">
@@ -159,13 +182,28 @@ export function MovieCard({
 
           <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
             {onRemove && (
-                <button
-                    onClick={handleRemoveAction}
-                    disabled={isRemoving}
-                    className="p-2 bg-black/60 backdrop-blur-md rounded-xl text-white hover:bg-red-600 transition-colors"
-                >
-                    {isRemoving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                </button>
+                <div className="flex flex-col gap-2">
+                    <button
+                        onClick={handleToggleWatched}
+                        disabled={isWatching || isWatched}
+                        className={`p-2 rounded-xl transition-all ${
+                            isWatched 
+                            ? "bg-green-500 text-white" 
+                            : "bg-black/60 backdrop-blur-md text-white hover:bg-green-600"
+                        }`}
+                        title="Mark as Watched"
+                    >
+                        {isWatching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                    <button
+                        onClick={handleRemoveAction}
+                        disabled={isRemoving}
+                        className="p-2 bg-black/60 backdrop-blur-md rounded-xl text-white hover:bg-red-600 transition-colors"
+                        title="Remove from List"
+                    >
+                        {isRemoving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    </button>
+                </div>
             )}
 
             {showActions && !onRemove && (

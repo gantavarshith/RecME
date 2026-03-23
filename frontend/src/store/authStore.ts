@@ -6,6 +6,7 @@ interface User {
   name: string;
   email: string;
   auth_provider: string;
+  created_at?: string;
 }
 
 interface AuthState {

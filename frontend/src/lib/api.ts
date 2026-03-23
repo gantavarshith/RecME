@@ -192,3 +192,8 @@ export const deleteAccount = (token: string) =>
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
+
+export const getUserStats = (token: string) =>
+  fetchAPI<any>("/auth/stats", {
+    headers: { Authorization: `Bearer ${token}` },
+  });

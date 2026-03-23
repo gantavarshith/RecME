@@ -93,9 +93,8 @@ export default function ChatbotPage() {
   };
 
   return (
-    <div className="h-[100dvh] bg-gray-50 dark:bg-zinc-950 flex flex-col overflow-hidden">
+    <div className="h-[calc(100dvh-64px)] flex flex-col overflow-hidden bg-transparent">
       <style dangerouslySetInnerHTML={{ __html: `footer { display: none !important; } body { overflow: hidden !important; }` }} />
-      <Navbar />
 
       <div className="flex-1 max-w-3xl w-full mx-auto px-4 py-4 flex flex-col gap-4 min-h-0">
         {/* Header */}
@@ -211,7 +210,7 @@ export default function ChatbotPage() {
         </div>
 
         {/* Input */}
-        <div className="sticky bottom-0 pt-4 pb-2 bg-gray-50 dark:bg-zinc-950">
+        <div className="sticky bottom-0 pt-4 pb-2 bg-transparent">
           <div className="flex items-end gap-3 p-3 rounded-2xl bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/5 shadow-sm focus-within:border-purple-400 dark:focus-within:border-purple-700 transition-colors">
             <textarea
               value={input}
