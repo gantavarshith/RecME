@@ -149,9 +149,17 @@ function MoviesContent() {
   };
 
   const handleNotInterestedChange = (id: string | number) => {
-    // Treat "not interested" like a "watched" event for immediate replacement
-    if (!q) {
-      setRecShuffleKey(k => k + 1);
+    // Refresh all potential sections
+    setRecShuffleKey(k => k + 1);
+    
+    // If a mood is active, refresh it too
+    if (activeMood) {
+      setMoodShuffleKey(k => k + 1);
+    }
+    
+    // If search is active, remove the movie from results manually for instant feedback
+    if (q) {
+      setSearchResults(prev => prev.filter(m => m.id !== id));
     }
   };
 
