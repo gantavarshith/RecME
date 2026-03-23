@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Movie, addToWatchlist } from "@/lib/api";
+import { Movie, addToWatchlist, addToNotInterested } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
   ArrowLeft,
@@ -15,6 +15,7 @@ import {
   Play,
   Users,
   Award,
+  XCircle,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
@@ -68,6 +69,24 @@ export default function MovieDetailPage() {
       alert(`Added ${movie.title} to your watchlist!`);
     } catch (err: any) {
       alert(err.message || "Failed to add to watchlist");
+    }
+  };
+
+  const handleNotInterested = async () => {
+    if (!token) {
+      alert("Please sign in to manage preferences.");
+      router.push("/login");
+      return;
+    }
+    if (!movie) return;
+
+    if (window.confirm(`Are you sure you want to hide "${movie.title}"? It won't be recommended to you again.`)) {
+      try {
+        await addToNotInterested(movie, token);
+        router.push("/movies"); // Go back since they don't want to see this
+      } catch (err: any) {
+        alert(err.message || "Failed to mark as not interested");
+      }
     }
   };
 
@@ -279,6 +298,13 @@ export default function MovieDetailPage() {
               >
                 <Share2 className="w-4 h-4" />
                 Share
+              </button>
+              <button
+                onClick={handleNotInterested}
+                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 font-bold border border-red-100 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/20 transition-all hover:scale-[1.02] active:scale-95"
+              >
+                <XCircle className="w-4 h-4" />
+                Not Interested
               </button>
             </div>
           </div>
