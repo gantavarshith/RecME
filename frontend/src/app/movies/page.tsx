@@ -106,12 +106,14 @@ function MoviesContent() {
 
   // Recommendations state
   const [recMovies, setRecMovies] = useState<Movie[]>([]);
+  const [recSpares, setRecSpares] = useState<Movie[]>([]);
   const [recLoading, setRecLoading] = useState(true);
   const [recShuffleKey, setRecShuffleKey] = useState(0);
 
   // Mood state
   const [activeMood, setActiveMood] = useState<string | null>(null);
   const [moodMovies, setMoodMovies] = useState<Movie[]>([]);
+  const [moodSpares, setMoodSpares] = useState<Movie[]>([]);
   const [moodLoading, setMoodLoading] = useState(false);
   const [moodShuffleKey, setMoodShuffleKey] = useState(0);
 
@@ -142,24 +144,55 @@ function MoviesContent() {
       return next;
     });
     
-    // Auto-refresh recommendations if a movie was just watched!
+    // Smoothly replace only this film if possible from spares
     if (watched && !q) {
-      setRecShuffleKey(k => k + 1);
+      if (recMovies.some(m => m.id === id)) {
+        replaceInDisplay(id, 'rec');
+      } else if (moodMovies.some(m => m.id === id)) {
+        replaceInDisplay(id, 'mood');
+      } else {
+        setRecShuffleKey(k => k + 1);
+      }
     }
   };
 
   const handleNotInterestedChange = (id: string | number) => {
-    // Refresh all potential sections
-    setRecShuffleKey(k => k + 1);
-    
-    // If a mood is active, refresh it too
-    if (activeMood) {
-      setMoodShuffleKey(k => k + 1);
+    // Refresh spares if we're running low
+    if (recSpares.length < 2) {
+      setRecShuffleKey(k => k + 1);
     }
     
-    // If search is active, remove the movie from results manually for instant feedback
-    if (q) {
+    // Locally swap the film for a spare for instant layout stability
+    if (recMovies.some(m => m.id === id)) {
+      replaceInDisplay(id, 'rec');
+    } else if (moodMovies.some(m => m.id === id)) {
+      replaceInDisplay(id, 'mood');
+    } else if (q) {
       setSearchResults(prev => prev.filter(m => m.id !== id));
+    }
+  };
+
+  const replaceInDisplay = (id: string | number, type: 'rec' | 'mood') => {
+    if (type === 'rec') {
+      setRecMovies(prev => {
+        const index = prev.findIndex(m => m.id === id);
+        if (index === -1 || recSpares.length === 0) return prev;
+        const next = [...prev];
+        const spare = recSpares[0];
+        next[index] = spare;
+        setRecSpares(s => s.slice(1));
+        return next;
+      });
+    } else {
+      setMoodMovies(prev => {
+        const index = prev.findIndex(m => m.id === id);
+        if (index === -1 || moodSpares.length === 0) return prev;
+        const next = [...prev];
+        const spare = moodSpares[0];
+        next[index] = spare;
+        setMoodSpares(s => s.slice(1));
+        return next;
+      });
     }
   };
 
@@ -192,9 +225,10 @@ function MoviesContent() {
     // Check if we want purely deterministic curation or randomized variety
     const shuffle = nextRecShouldShuffle.current;
     
-    getRecommendations(token || undefined, "1", 5, shuffle).then((data) => {
+    getRecommendations(token || undefined, "1", 10, shuffle).then((data) => {
       if (!cancelled) {
-        setRecMovies(data);
+        setRecMovies(data.slice(0, 5));
+        setRecSpares(data.slice(5));
         setRecLoading(false);
         // Reset shuffle intent for subsequent auto-refreshes (like marking as watched)
         nextRecShouldShuffle.current = false;
@@ -213,7 +247,8 @@ function MoviesContent() {
     setMoodLoading(true);
     getMoodRecommendations(activeMood).then((data) => {
       if (!cancelled) {
-        setMoodMovies(data);
+        setMoodMovies(data.slice(0, 20)); // show 20 movies
+        setMoodSpares(data.slice(20));    // hide 10 as spares
         setMoodLoading(false);
       }
     }).catch(() => {

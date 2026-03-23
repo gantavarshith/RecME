@@ -58,8 +58,8 @@ export const getRecommendations = (token?: string, userId = "1", topK = 5, shuff
 export const searchMovies = (query: string) =>
   fetchAPI<Movie[]>(`/search/?query=${encodeURIComponent(query)}`);
 
-export const getMoodRecommendations = (mood: string) =>
-  fetchAPI<Movie[]>(`/mood/?mood=${encodeURIComponent(mood)}`);
+export const getMoodRecommendations = (mood: string, topK = 30) =>
+  fetchAPI<Movie[]>(`/mood/?mood=${encodeURIComponent(mood)}&top_k=${topK}`);
 
 export const getMoviesByTag = (tag: string) =>
   fetchAPI<Movie[]>(`/movies/tagged/${encodeURIComponent(tag)}`);
