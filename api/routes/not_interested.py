@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from api.dependencies import get_db, get_current_user
 from api.models.user_model import UserOut
 from pydantic import BaseModel
-from typing import List
+from typing import List, Union
 
 router = APIRouter()
 
 class NotInterestedMovie(BaseModel):
-    id: int | str
+    id: Union[int, str]
     title: str
     poster_path: str = None
     vote_average: float = 0.0

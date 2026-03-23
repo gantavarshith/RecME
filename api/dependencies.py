@@ -1,8 +1,11 @@
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from api.core.security import SECRET_KEY, ALGORITHM
+from src.config.settings import settings
 from api.models.user_model import UserOut
+
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = "HS256"
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
@@ -21,17 +24,20 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db=Depends(get_d
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
         if user_id is None:
+            print(f"AUTH DEBUG: Token payload missing 'sub'. Payload keys: {list(payload.keys())}")
             raise credentials_exception
-    except JWTError:
+    except JWTError as e:
+        print(f"AUTH DEBUG: JWT Decode failed: {e}. Secret starts with: {SECRET_KEY[:4]}...")
         raise credentials_exception
 
     try:
         user = await db.users.find_one({"id": user_id})
     except Exception as e:
-        print(f"DEBUG: database error in get_current_user: {e}")
+        print(f"AUTH DEBUG: Database error while searching for user '{user_id}': {e}")
         raise credentials_exception
 
     if user is None:
+        print(f"AUTH DEBUG: Token valid, but user '{user_id}' not found in MongoDB.")
         raise credentials_exception
 
     return UserOut(**user)

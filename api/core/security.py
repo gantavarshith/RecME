@@ -7,10 +7,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from src.config.settings import settings
+
 logger = logging.getLogger(__name__)
 
 # Security configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "7b689a7c8e9d0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f90")
+SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
