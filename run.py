@@ -12,9 +12,9 @@ def run_api():
     print("Starting FastAPI backend on port 8007...")
     uvicorn_path = get_venv_bin("uvicorn")
     if os.path.exists(uvicorn_path):
-        subprocess.run([uvicorn_path, "api.main:app", "--reload", "--port", "8007"], shell=True)
+        subprocess.run([uvicorn_path, "api.main:app", "--reload", "--host", "0.0.0.0", "--port", "8007"], shell=True)
     else:
-        subprocess.run(["uvicorn", "api.main:app", "--reload", "--port", "8007"], shell=True)
+        subprocess.run(["uvicorn", "api.main:app", "--reload", "--host", "0.0.0.0", "--port", "8007"], shell=True)
 
 def run_frontend():
     print("Starting React frontend...")

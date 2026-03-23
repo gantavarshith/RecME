@@ -9,7 +9,8 @@ router = APIRouter()
 @router.get("/")
 async def get_recommendations(
     user_id: str = "1", 
-    top_k: int = 50, 
+    top_k: int = 5,
+    shuffle: bool = False,
     db = Depends(get_db),
     current_user = Depends(get_current_user_optional)
 ):
@@ -22,50 +23,87 @@ async def get_recommendations(
     effective_user_id = current_user.id if current_user else user_id
 
     # 1. Fetch watched IDs for this user to suppress them
-    watched_cursor = db.watched.find({"user_id": effective_user_id}, {"movie_data.id": 1})
-    watched_docs = await watched_cursor.to_list(length=1000)
-    watched_ids = {str(doc["movie_data"]["id"]) for doc in watched_docs}
-    watched_ids.update({int(doc["movie_data"]["id"]) for doc in watched_docs if str(doc["movie_data"]["id"]).isdigit()})
+    watched_cursor = db.watched.find({"user_id": str(effective_user_id)}, {"movie_data.id": 1})
+    watched_docs = await watched_cursor.to_list(length=2000)
+    
+    watched_ids: set = set()
+    for doc in watched_docs:
+        mid_raw = doc.get("movie_data", {}).get("id")
+        if mid_raw is not None:
+            watched_ids.add(str(mid_raw))
+            try:
+                watched_ids.add(int(mid_raw))
+            except (ValueError, TypeError):
+                pass
+
+    # 2. Fetch watchlist movies to suppress
+    wl_cursor = db.watchlist.find({"user_id": str(effective_user_id)}, {"movie_data.id": 1})
+    wl_docs = await wl_cursor.to_list(length=1000)
+    for doc in wl_docs:
+        mid_raw = doc.get("movie_data", {}).get("id")
+        if mid_raw is not None:
+            watched_ids.add(str(mid_raw))
+            try:
+                watched_ids.add(int(mid_raw))
+            except (ValueError, TypeError):
+                pass
+
+    # 3. Fetch not_interested movies to suppress
+    ni_cursor = db.not_interested.find({"user_id": str(effective_user_id)}, {"movie_data.id": 1})
+    ni_docs = await ni_cursor.to_list(length=1000)
+    for doc in ni_docs:
+        mid_raw = doc.get("movie_data", {}).get("id")
+        if mid_raw is not None:
+            watched_ids.add(str(mid_raw))
+            try:
+                watched_ids.add(int(mid_raw))
+            except (ValueError, TypeError):
+                pass
 
     movies_pool = await _build_movie_pool()
     if not movies_pool:
         return []
         
-    recommended_ids = get_ai_recommendations(effective_user_id, movies_pool, top_k=top_k * 2)
-
+    # Ask model for more than needed so we have room to filter
+    requested_count = top_k
+    # Fetch a large set of IDs from the engine for significant variety
+    recommended_ids = get_ai_recommendations(effective_user_id, movies_pool, top_k=200)
     
-    # Map IDs back to objects, skipping watched ones
-    final_movies = []
+    # Collect candidates for output.
+    # If shuffle is ON, we pick from the top 100 available to ensure a "fresh" feel.
+    CANDIDATE_LIMIT = 100 if shuffle else requested_count
+    
+    candidates = []
     seen_ids = set()
 
-    # Collect a larger window (top_k * 3) so we have room to shuffle
-    WINDOW = top_k * 3
     for rid in recommended_ids:
+        # Strict exclusion
         if rid in watched_ids:
             continue
 
-        for m in movies_pool:
-            if m.get('id') == rid and rid not in seen_ids:
-                final_movies.append(m)
-                seen_ids.add(rid)
-                break
-
-        if len(final_movies) >= WINDOW:
+        # Find movie in pool
+        movie = next((m for m in movies_pool if str(m.get("id")) == str(rid) or m.get("id") == rid), None)
+        if movie and movie.get("id") not in seen_ids:
+            candidates.append(movie)
+            seen_ids.add(movie["id"])
+        
+        if len(candidates) >= CANDIDATE_LIMIT:
             break
 
-    # Padding logic (also avoiding watched) — fill up to WINDOW
-    if len(final_movies) < WINDOW:
-        pool_copy = movies_pool.copy()
-        random.shuffle(pool_copy)
+    # 4. Padding if not enough candidates (rare)
+    if len(candidates) < requested_count:
+        pool_copy = sorted(movies_pool, key=lambda x: x.get('vote_average', 0), reverse=True)
         for m in pool_copy:
             mid = m.get('id')
             if mid not in seen_ids and mid not in watched_ids:
-                final_movies.append(m)
+                candidates.append(m)
                 seen_ids.add(mid)
-            if len(final_movies) >= WINDOW:
+            if len(candidates) >= requested_count: 
                 break
 
-    # Shuffle the quality window so every request returns a fresh subset
-    random.shuffle(final_movies)
-    return final_movies[:top_k]
+    # 5. Shuffle ONLY if requested!
+    if shuffle:
+        random.shuffle(candidates)
+    
+    return candidates[:requested_count]
 

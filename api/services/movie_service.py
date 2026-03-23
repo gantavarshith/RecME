@@ -140,24 +140,34 @@ async def _build_movie_pool() -> list[dict]:
 
     async with httpx.AsyncClient() as client:
         pages = await asyncio.gather(
-            _tmdb(client, "/discover/movie",
-                  sort_by="vote_average.desc",
-                  **{"vote_count.gte": 2000, "vote_average.gte": 7.0,
-                     "with_original_language": "en", "page": 1}),
-            _tmdb(client, "/discover/movie",
-                  sort_by="vote_average.desc",
-                  **{"vote_count.gte": 2000, "vote_average.gte": 7.0,
-                     "with_original_language": "en", "page": 2}),
-            _tmdb(client, "/discover/movie",
-                  sort_by="vote_average.desc",
-                  **{"vote_count.gte": 2000, "vote_average.gte": 7.0,
-                     "with_original_language": "en", "page": 3}),
-            _tmdb(client, "/movie/popular",
-                  **{"page": 1}),
-            _tmdb(client, "/movie/popular",
-                  **{"page": 2}),
-            _tmdb(client, "/movie/top_rated",
-                  **{"page": 1}),
+            # Top rated "gems"
+            _tmdb(client, "/discover/movie", sort_by="vote_average.desc",
+                  **{"vote_count.gte": 1000, "vote_average.gte": 7.5, "page": 1}),
+            _tmdb(client, "/discover/movie", sort_by="vote_average.desc",
+                  **{"vote_count.gte": 1000, "vote_average.gte": 7.5, "page": 2}),
+            _tmdb(client, "/discover/movie", sort_by="vote_average.desc",
+                  **{"vote_count.gte": 1000, "vote_average.gte": 7.5, "page": 3}),
+            _tmdb(client, "/discover/movie", sort_by="vote_average.desc",
+                  **{"vote_count.gte": 1000, "vote_average.gte": 7.5, "page": 4}),
+            _tmdb(client, "/discover/movie", sort_by="vote_average.desc",
+                  **{"vote_count.gte": 1000, "vote_average.gte": 7.5, "page": 5}),
+            
+            # High popularity "hits"
+            _tmdb(client, "/movie/popular", page=1),
+            _tmdb(client, "/movie/popular", page=2),
+            _tmdb(client, "/movie/popular", page=3),
+            _tmdb(client, "/movie/popular", page=4),
+            _tmdb(client, "/movie/popular", page=5),
+            
+            # Top rated "classics"
+            _tmdb(client, "/movie/top_rated", page=1),
+            _tmdb(client, "/movie/top_rated", page=2),
+            _tmdb(client, "/movie/top_rated", page=3),
+            
+            # Diverse genres (Action, Sci-Fi, Comedy, Drama/Must-watch)
+            _tmdb(client, "/discover/movie", sort_by="popularity.desc", **{"with_genres": "28,878", "page": 1}),
+            _tmdb(client, "/discover/movie", sort_by="popularity.desc", **{"with_genres": "35,10749", "page": 1}),
+            _tmdb(client, "/discover/movie", sort_by="popularity.desc", **{"with_genres": "27,53", "page": 1}),
         )
 
     seen: set = set()

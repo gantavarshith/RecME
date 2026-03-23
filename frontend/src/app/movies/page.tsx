@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense, useCallback } from "react";
+import { useEffect, useState, Suspense, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { searchMovies, getMoodRecommendations, getRecommendations, getMoviesByTag, Movie, getWatched } from "@/lib/api";
 import { Search, Sparkles, TrendingUp, X, Shuffle, Film } from "lucide-react";
@@ -24,15 +24,17 @@ function MovieGrid({
   movies, 
   loading,
   watchedIds,
-  onWatchedChange
+  onWatchedChange,
+  onNotInterestedChange
 }: { 
   movies: Movie[]; 
   loading: boolean;
   watchedIds?: Set<string | number>;
   onWatchedChange?: (id: string | number, watched: boolean) => void;
+  onNotInterestedChange?: (id: string | number) => void;
 }) {
 
-  if (loading) {
+  if (loading && movies.length === 0) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {Array.from({ length: 12 }).map((_, i) => (
@@ -57,22 +59,37 @@ function MovieGrid({
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-      {movies.map((movie, i) => (
-        <motion.div
-          key={`${movie.id}-${i}`}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.2, delay: i * 0.02 }}
-          className="h-full"
-        >
-          <MovieCard 
-            movie={movie} 
-            isWatchedInitial={watchedIds?.has(movie.id as string | number)}
-            onWatchedChange={onWatchedChange}
-          />
-        </motion.div>
-      ))}
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 relative">
+      <AnimatePresence mode="popLayout">
+        {movies.map((movie, i) => (
+          <motion.div
+            key={movie.id}
+            layout
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ 
+              opacity: { duration: 0.2 },
+              layout: { duration: 0.3, type: "spring", stiffness: 300, damping: 30 }
+            }}
+            className="h-full"
+          >
+            <MovieCard 
+              movie={movie} 
+              isWatchedInitial={watchedIds?.has(movie.id as string | number)}
+              onWatchedChange={onWatchedChange}
+              onNotInterestedChange={onNotInterestedChange}
+            />
+          </motion.div>
+        ))}
+      </AnimatePresence>
+      
+      {/* Overlay a small spinner if we're silently reloading (shuffling) */}
+      {loading && movies.length > 0 && (
+        <div className="absolute inset-0 bg-white/40 dark:bg-zinc-950/40 backdrop-blur-[1px] flex items-center justify-center rounded-2xl z-20 transition-opacity animate-in fade-in">
+          <div className="w-8 h-8 rounded-full border-4 border-purple-500/30 border-t-purple-600 animate-spin" />
+        </div>
+      )}
     </div>
   );
 }
@@ -98,6 +115,9 @@ function MoviesContent() {
   const [moodLoading, setMoodLoading] = useState(false);
   const [moodShuffleKey, setMoodShuffleKey] = useState(0);
 
+  // Use a ref to track if we should ask the backend for fresh randomization vs top ranking
+  const nextRecShouldShuffle = useRef(false);
+
   // Tag state
   const [tagMovies, setTagMovies] = useState<Movie[]>([]);
   const [tagLoading, setTagLoading] = useState(false);
@@ -121,6 +141,18 @@ function MoviesContent() {
       else next.delete(id);
       return next;
     });
+    
+    // Auto-refresh recommendations if a movie was just watched!
+    if (watched && !q) {
+      setRecShuffleKey(k => k + 1);
+    }
+  };
+
+  const handleNotInterestedChange = (id: string | number) => {
+    // Treat "not interested" like a "watched" event for immediate replacement
+    if (!q) {
+      setRecShuffleKey(k => k + 1);
+    }
   };
 
 
@@ -148,16 +180,23 @@ function MoviesContent() {
     if (q) return; // Don't load if searching
     let cancelled = false;
     setRecLoading(true);
-    getRecommendations("1", 12).then((data) => {
+    
+    // Check if we want purely deterministic curation or randomized variety
+    const shuffle = nextRecShouldShuffle.current;
+    
+    getRecommendations(token || undefined, "1", 5, shuffle).then((data) => {
       if (!cancelled) {
         setRecMovies(data);
         setRecLoading(false);
+        // Reset shuffle intent for subsequent auto-refreshes (like marking as watched)
+        nextRecShouldShuffle.current = false;
       }
     }).catch(() => {
       if (!cancelled) setRecLoading(false);
+      nextRecShouldShuffle.current = false;
     });
     return () => { cancelled = true; };
-  }, [q, recShuffleKey]);
+  }, [q, recShuffleKey, token]);
 
   // Load Mood Recommendations
   useEffect(() => {
@@ -193,6 +232,11 @@ function MoviesContent() {
     });
     return () => { cancelled = true; };
   }, [tag, q]);
+
+  const handleShuffleClick = () => {
+    nextRecShouldShuffle.current = true;
+    setRecShuffleKey(k => k + 1);
+  };
 
   const handleMoodClick = (moodValue: string) => {
     if (activeMood === moodValue) {
@@ -231,6 +275,7 @@ function MoviesContent() {
               loading={searchLoading} 
               watchedIds={watchedIds}
               onWatchedChange={handleWatchedChange}
+              onNotInterestedChange={handleNotInterestedChange}
             />
 
           </section>
@@ -273,6 +318,7 @@ function MoviesContent() {
                   loading={tagLoading} 
                   watchedIds={watchedIds}
                   onWatchedChange={handleWatchedChange}
+                  onNotInterestedChange={handleNotInterestedChange}
                 />
 
                 <div className="mt-12 mb-8">
@@ -291,7 +337,7 @@ function MoviesContent() {
                   </h2>
                 </div>
                 <button
-                  onClick={() => setRecShuffleKey((k) => k + 1)}
+                  onClick={handleShuffleClick}
                   disabled={recLoading}
                   className="flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors disabled:opacity-50"
                   title="Shuffle recommendations"
@@ -300,7 +346,13 @@ function MoviesContent() {
                   Shuffle
                 </button>
               </div>
-              <MovieGrid movies={recMovies} loading={recLoading} />
+                <MovieGrid 
+                  movies={recMovies} 
+                  loading={recLoading} 
+                  watchedIds={watchedIds}
+                  onWatchedChange={handleWatchedChange}
+                  onNotInterestedChange={handleNotInterestedChange}
+                />
             </section>
 
             <hr className="border-gray-200 dark:border-zinc-800/50" />
@@ -359,6 +411,7 @@ function MoviesContent() {
                     loading={moodLoading} 
                     watchedIds={watchedIds}
                     onWatchedChange={handleWatchedChange}
+                    onNotInterestedChange={handleNotInterestedChange}
                   />
 
                   </motion.div>

@@ -50,8 +50,10 @@ export interface ChatResponse {
   response: string;
 }
 
-export const getRecommendations = (userId = "1", topK = 12) =>
-  fetchAPI<Movie[]>(`/recommend/?user_id=${userId}&top_k=${topK}`);
+export const getRecommendations = (token?: string, userId = "1", topK = 5, shuffle = false) =>
+  fetchAPI<Movie[]>(`/recommend/?user_id=${userId}&top_k=${topK}&shuffle=${shuffle}`, token ? {
+    headers: { Authorization: `Bearer ${token}` },
+  } : {});
 
 export const searchMovies = (query: string) =>
   fetchAPI<Movie[]>(`/search/?query=${encodeURIComponent(query)}`);
@@ -147,6 +149,25 @@ export const addToWatched = (movie: Movie, token: string) =>
 
 export const removeFromWatched = (movieId: string | number, token: string) =>
   fetchAPI<any>(`/watched/remove/${movieId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+// NOT INTERESTED ENDPOINTS
+export const getNotInterested = (token: string) =>
+  fetchAPI<Movie[]>("/not_interested", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+export const addToNotInterested = (movie: Movie, token: string) =>
+  fetchAPI<any>("/not_interested/add", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(movie),
+  });
+
+export const removeFromNotInterested = (movieId: string | number, token: string) =>
+  fetchAPI<any>(`/not_interested/remove/${movieId}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });

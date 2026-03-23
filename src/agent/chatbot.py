@@ -41,7 +41,7 @@ class ChatbotAgent:
         if not self.api_key:
             return None
 
-        model_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.api_key}"
+        model_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={self.api_key}"
         
         # Prepare messages for Gemini format
         messages = []

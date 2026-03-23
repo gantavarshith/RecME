@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Star, Film, Bookmark, Check, Eye, Loader2, Trash2 } from "lucide-react";
+import { Star, Film, Bookmark, Check, Eye, Loader2, Trash2, XCircle } from "lucide-react";
 import Link from "next/link";
-import { Movie, addToWatchlist, addToWatched } from "@/lib/api";
+import { Movie, addToWatchlist, addToWatched, addToNotInterested } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 
 interface MovieCardProps {
   movie: Movie;
   isWatchedInitial?: boolean;
   onWatchedChange?: (id: string | number, watched: boolean) => void;
+  onNotInterestedChange?: (id: string | number) => void;
   onRemove?: (id: string | number) => void;
   showActions?: boolean;
 }
@@ -19,6 +20,7 @@ export function MovieCard({
   movie, 
   isWatchedInitial = false, 
   onWatchedChange,
+  onNotInterestedChange,
   onRemove,
   showActions = true
 }: MovieCardProps) {
@@ -77,6 +79,25 @@ export function MovieCard({
             console.error("Failed to update watched status", err);
         } finally {
             setIsWatching(false);
+        }
+    }
+  };
+
+  const handleNotInterested = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isAuthenticated) {
+        window.location.href = "/login";
+        return;
+    }
+
+    if (token && movie.id) {
+        try {
+            await addToNotInterested(movie, token);
+            if (onNotInterestedChange) onNotInterestedChange(movie.id);
+        } catch (err) {
+            console.error("Failed to mark as not interested", err);
         }
     }
   };
@@ -181,6 +202,14 @@ export function MovieCard({
                     ) : (
                         <Eye className="w-4 h-4" />
                     )}
+                </button>
+
+                <button
+                    onClick={handleNotInterested}
+                    className="p-2 bg-black/60 backdrop-blur-sm rounded-xl text-white hover:bg-red-500 transition-colors"
+                    title="Not Interested"
+                >
+                    <XCircle className="w-4 h-4" />
                 </button>
               </>
             )}

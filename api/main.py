@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from motor.motor_asyncio import AsyncIOMotorClient
 from src.config.settings import settings
-from api.routes import recommend, search, mood, chatbot, movies, auth, watchlist, watched, motd
+from api.routes import recommend, search, mood, chatbot, movies, auth, watchlist, watched, motd, not_interested
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,7 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 async def lifespan(app: FastAPI):
     # Startup: Initialize MongoDB client
     app.mongodb_client = AsyncIOMotorClient(settings.MONGODB_URL)
-    app.mongodb = app.mongodb_client[settings.MONGODB_URL.split('/')[-1]]
+    # Be more robust in getting db name
+    db_name = settings.MONGODB_URL.split('/')[-1].split('?')[0] or "recme"
+    app.mongodb = app.mongodb_client[db_name]
     yield
     # Shutdown: Close MongoDB client
     app.mongodb_client.close()
@@ -22,17 +24,6 @@ app = FastAPI(
 )
 
 # Configure CORS
-origins = [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-# Add from settings as well
-if settings.ALLOWED_ORIGINS:
-    origins.extend([o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()])
-
 origins = [
     "http://localhost:3000",
     "http://localhost:3001",
@@ -65,6 +56,7 @@ app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(watchlist.router, prefix="/watchlist", tags=["Watchlist"])
 app.include_router(watched.router, prefix="/watched", tags=["Watched"])
 app.include_router(motd.router, prefix="/motd", tags=["Movie of the Day"])
+app.include_router(not_interested.router, prefix="/not_interested", tags=["Not Interested"])
 
 @app.get("/")
 def read_root():

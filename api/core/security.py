@@ -3,7 +3,6 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Union
 from jose import jwt
-from passlib.context import CryptContext
 from dotenv import load_dotenv
 
 load_dotenv()

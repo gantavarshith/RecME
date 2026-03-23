@@ -46,49 +46,63 @@ async def get_movie_of_the_day(
     if not pool:
         return {}
 
-    # Collect IDs to exclude (watched + watchlist) for authenticated users
+    # 1. Collect IDs to exclude (watched + watchlist + not_interested)
     exclude_ids: set = set()
     if current_user:
         try:
-            watched_cursor = db.watched.find(
-                {"user_id": current_user.id}, {"movie_data.id": 1}
-            )
+            # Watched
+            watched_cursor = db.watched.find({"user_id": current_user.id}, {"movie_data.id": 1})
             watched_docs = await watched_cursor.to_list(length=1000)
             for doc in watched_docs:
                 mid = doc.get("movie_data", {}).get("id")
                 if mid is not None:
-                    exclude_ids.add(str(mid))
-                    exclude_ids.add(int(mid) if str(mid).isdigit() else mid)
+                    exclude_ids.add(str(mid)); exclude_ids.add(int(mid) if str(mid).isdigit() else mid)
 
-            wl_cursor = db.watchlist.find(
-                {"user_id": current_user.id}, {"movie_data.id": 1}
-            )
+            # Watchlist
+            wl_cursor = db.watchlist.find({"user_id": current_user.id}, {"movie_data.id": 1})
             wl_docs = await wl_cursor.to_list(length=500)
             for doc in wl_docs:
                 mid = doc.get("movie_data", {}).get("id")
                 if mid is not None:
-                    exclude_ids.add(str(mid))
-                    exclude_ids.add(int(mid) if str(mid).isdigit() else mid)
+                    exclude_ids.add(str(mid)); exclude_ids.add(int(mid) if str(mid).isdigit() else mid)
+            
+            # Not Interested
+            ni_cursor = db.not_interested.find({"user_id": current_user.id}, {"movie_data.id": 1})
+            ni_docs = await ni_cursor.to_list(length=500)
+            for doc in ni_docs:
+                mid = doc.get("movie_data", {}).get("id")
+                if mid is not None:
+                    exclude_ids.add(str(mid)); exclude_ids.add(int(mid) if str(mid).isdigit() else mid)
         except Exception as e:
-            print(f"[MOTD] Could not fetch user history: {e}")
+            print(f"[MOTD] History fetch error: {e}")
 
-    # Filter pool
-    eligible = [m for m in pool if m.get("id") not in exclude_ids]
-    if not eligible:
-        eligible = pool  # fallback: ignore exclusions if everything is excluded
-
-    # Only consider well-rated movies (>= 7.5) for MOTD
-    premium = [m for m in eligible if (m.get("vote_average") or 0) >= 7.5]
+    # 2. Get premium movies pool (Deterministic order)
+    pool = await _build_movie_pool()
+    if not pool:
+        return {}
+    
+    # Sort pool by ID to ensure rng.shuffle or selection is stable across server restarts if pool order changes
+    stable_pool = sorted(pool, key=lambda x: str(x.get('id', '')))
+    premium = [m for m in stable_pool if (m.get("vote_average") or 0) >= 7.5]
     if not premium:
-        premium = eligible
+        premium = stable_pool
 
-    # Deterministic random pick for this user + day
+    # 3. Deterministic candidate sequence per day (Global seed)
     date_ordinal = datetime.date.today().toordinal()
-    user_seed = hash(user_key) if user_key != "guest" else 0
-    rng = random.Random(date_ordinal + user_seed)
-    chosen_basic = rng.choice(premium)
+    rng = random.Random(date_ordinal)
+    
+    # We shuffle a copy of the premium pool using the day's seed
+    candidates = premium.copy()
+    rng.shuffle(candidates)
+    
+    # Pick the first one that isn't excluded for this specific user
+    chosen_basic = candidates[0] # Fallback
+    for c in candidates:
+        if c.get("id") not in exclude_ids:
+            chosen_basic = c
+            break
 
-    # Enrich with full details (director, runtime, IMDb rating, backdrop)
+    # 4. Enrich with full details
     try:
         detailed = await get_movie_detail(int(chosen_basic["id"]))
         movie = detailed if detailed else chosen_basic

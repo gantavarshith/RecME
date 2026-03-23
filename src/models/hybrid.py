@@ -51,11 +51,11 @@ class HybridRecommender:
         for rank, movie_id in enumerate(cb_recs):
             hybrid_scores[movie_id] = hybrid_scores.get(movie_id, 0) + (len(cb_recs) - rank) * 1.0
             
-        # If no history/predictions (Cold Start), recommend random popular movies
+        # If no history/predictions (Cold Start), recommend popular movies deterministically
         if not hybrid_scores:
-            popular = self.movies_df['id'].tolist()
-            random.shuffle(popular)
-            return popular[:top_k]
+            # Sort by vote average (popularity proxy) for a fixed curation
+            popular_ids = self.movies_df.sort_values(by=['vote_average', 'id'], ascending=False)['id'].tolist()
+            return popular_ids[:top_k]
             
         # Sort and return top_k
         sorted_hybrid = sorted(hybrid_scores.items(), key=lambda x: x[1], reverse=True)

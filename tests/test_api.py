@@ -11,4 +11,6 @@ def test_read_root():
 def test_recommend_route():
     response = client.get("/recommend/")
     assert response.status_code == 200
-    assert "recommendations" in response.json()
+    assert isinstance(response.json(), list)
+    if len(response.json()) > 0:
+        assert "title" in response.json()[0]

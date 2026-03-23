@@ -9,17 +9,17 @@ def run_training_pipeline():
     print("Starting training pipeline...")
     
     # 1. Load data
-    # movies, ratings = load_raw_data()
+    movies, ratings = load_raw_data()
     
     # 2. Preprocess
-    # movies_clean = preprocess_movies(movies)
-    # ratings_clean = preprocess_ratings(ratings)
+    movies_clean = preprocess_movies(movies)
+    ratings_clean = preprocess_ratings(ratings)
     
-    # 3. Train Model
+    # 3. Train Model (SVD + TF-IDF Similarity Matrix)
     recommender = HybridRecommender()
-    # recommender.fit(ratings_clean, movies_clean)
+    recommender.fit(ratings_clean, movies_clean)
     
-    # 4. Save Model
+    # 4. Save Model for Inference
     os.makedirs("models", exist_ok=True)
     with open("models/hybrid_model.pkl", "wb") as f:
         pickle.dump(recommender, f)
