@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Navbar } from "@/components/Navbar";
 import { FileText } from "lucide-react";
 
 const SECTIONS = [
@@ -84,10 +83,8 @@ const SECTIONS = [
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col">
-      <Navbar />
-
-      <main className="flex-1 max-w-3xl mx-auto px-4 py-14 w-full">
+    <div className="min-h-screen bg-transparent flex flex-col">
+      <main className="flex-1 max-w-5xl mx-auto px-6 py-20 w-full">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

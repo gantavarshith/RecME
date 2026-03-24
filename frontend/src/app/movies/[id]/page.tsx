@@ -17,7 +17,6 @@ import {
   Award,
   XCircle,
 } from "lucide-react";
-import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
@@ -99,8 +98,7 @@ export default function MovieDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
-        <Navbar />
+      <div className="min-h-screen bg-transparent">
         <div className="animate-pulse max-w-6xl mx-auto px-4 py-10">
           <div className="h-96 rounded-3xl bg-gray-200 dark:bg-zinc-800 mb-8" />
           <div className="flex gap-8 mt-6">
@@ -118,8 +116,7 @@ export default function MovieDetailPage() {
 
   if (!movie) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
-        <Navbar />
+      <div className="min-h-screen bg-transparent">
         <div className="flex flex-col items-center justify-center py-32 text-center px-4">
           <Film className="w-16 h-16 text-gray-300 dark:text-zinc-700 mb-4" />
           <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-2">
@@ -140,8 +137,7 @@ export default function MovieDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
-      <Navbar />
+    <div className="min-h-screen bg-transparent">
 
       {/* Hero Backdrop */}
       <div className="relative h-[50vh] w-full overflow-hidden">

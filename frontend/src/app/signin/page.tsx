@@ -1,16 +1,12 @@
 "use client";
 
-import { AuroraBackground } from "@/components/ui/aurora-background";
-import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
 import { UserCircle, Mail, Lock, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 export default function SignInPage() {
   return (
-    <AuroraBackground className="flex-col !justify-start !items-stretch">
-      <Navbar />
-      <main className="flex-1 flex items-center justify-center p-6">
+    <main className="flex-1 flex items-center justify-center p-6 bg-transparent">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -69,6 +65,5 @@ export default function SignInPage() {
           </div>
         </motion.div>
       </main>
-    </AuroraBackground>
   );
 }
