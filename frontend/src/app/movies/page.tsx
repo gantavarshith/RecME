@@ -59,18 +59,31 @@ function MovieGrid({
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 relative">
-      <AnimatePresence mode="popLayout">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 relative">
+      <AnimatePresence mode="popLayout" initial={false}>
         {movies.map((movie, i) => (
           <motion.div
             key={movie.id}
             layout
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
+            animate={{ 
+              opacity: 1, 
+              scale: 1, 
+              filter: "blur(0px)",
+              transition: { 
+                delay: i * 0.03,
+                duration: 0.4,
+                ease: [0.23, 1, 0.32, 1] 
+              } 
+            }}
+            exit={{ 
+              opacity: 0, 
+              scale: 0.9, 
+              filter: "blur(10px)",
+              transition: { duration: 0.2 } 
+            }}
             transition={{ 
-              opacity: { duration: 0.2 },
-              layout: { duration: 0.3, type: "spring", stiffness: 300, damping: 30 }
+              layout: { duration: 0.5, type: "spring", stiffness: 200, damping: 25 }
             }}
             className="h-full"
           >
@@ -84,10 +97,12 @@ function MovieGrid({
         ))}
       </AnimatePresence>
       
-      {/* Overlay a small spinner if we're silently reloading (shuffling) */}
+      {/* Overlay a subtle blur if we're silently reloading (shuffling) */}
       {loading && movies.length > 0 && (
-        <div className="absolute inset-0 bg-white/40 dark:bg-zinc-950/40 backdrop-blur-[1px] flex items-center justify-center rounded-2xl z-20 transition-opacity animate-in fade-in">
-          <div className="w-8 h-8 rounded-full border-4 border-purple-500/30 border-t-purple-600 animate-spin" />
+        <div className="absolute inset-0 bg-white/10 dark:bg-zinc-950/10 backdrop-blur-[2px] flex items-center justify-center rounded-2xl z-20 pointer-events-none transition-all duration-500">
+          <div className="bg-white/80 dark:bg-zinc-900/80 p-4 rounded-full shadow-2xl border border-white/20">
+            <div className="w-8 h-8 rounded-full border-2 border-purple-500/20 border-t-purple-600 animate-spin" />
+          </div>
         </div>
       )}
     </div>
@@ -225,7 +240,7 @@ function MoviesContent() {
     // Check if we want purely deterministic curation or randomized variety
     const shuffle = nextRecShouldShuffle.current;
     
-    getRecommendations(token || undefined, "1", 10, shuffle).then((data) => {
+    getRecommendations(token || undefined, 10, shuffle).then((data) => {
       if (!cancelled) {
         setRecMovies(data.slice(0, 5));
         setRecSpares(data.slice(5));
@@ -380,11 +395,20 @@ function MoviesContent() {
                 <button
                   onClick={handleShuffleClick}
                   disabled={recLoading}
-                  className="flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors disabled:opacity-50"
+                  className="group flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all active:scale-95 disabled:opacity-50 border border-purple-100 dark:border-purple-800/30 shadow-sm"
                   title="Shuffle recommendations"
                 >
-                  <Shuffle className="w-4 h-4" />
-                  Shuffle
+                  <motion.div
+                    animate={recLoading ? { rotate: 360 } : { rotate: 0 }}
+                    transition={{
+                      repeat: recLoading ? Infinity : 0,
+                      duration: 1,
+                      ease: "linear"
+                    }}
+                  >
+                    <Shuffle className={`w-4 h-4 ${recLoading ? 'opacity-80' : 'group-hover:rotate-12 transition-transform'}`} />
+                  </motion.div>
+                  {recLoading ? "Shuffling..." : "Shuffle"}
                 </button>
               </div>
                 <MovieGrid 
@@ -424,7 +448,14 @@ function MoviesContent() {
                         }`}
                       >
                         {m.label}
-                        {isActive && <Shuffle className="w-3.5 h-3.5 opacity-80" />}
+                        {isActive && (
+                          <motion.div
+                            animate={moodLoading ? { rotate: 360 } : { rotate: 0 }}
+                            transition={{ repeat: moodLoading ? Infinity : 0, duration: 1, ease: "linear" }}
+                          >
+                            <Shuffle className="w-3.5 h-3.5 opacity-80" />
+                          </motion.div>
+                        )}
                       </button>
                     );
                   })}

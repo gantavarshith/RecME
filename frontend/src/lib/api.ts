@@ -50,8 +50,8 @@ export interface ChatResponse {
   response: string;
 }
 
-export const getRecommendations = (token?: string, userId = "1", topK = 5, shuffle = false) =>
-  fetchAPI<Movie[]>(`/recommend/?user_id=${userId}&top_k=${topK}&shuffle=${shuffle}`, token ? {
+export const getRecommendations = (token?: string, topK = 5, shuffle = false) =>
+  fetchAPI<Movie[]>(`/recommend/?top_k=${topK}&shuffle=${shuffle}`, token ? {
     headers: { Authorization: `Bearer ${token}` },
   } : {});
 

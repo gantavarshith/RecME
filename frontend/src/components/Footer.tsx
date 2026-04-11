@@ -141,7 +141,7 @@ export function Footer() {
         <div className="pt-10 border-t border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 text-center md:text-left">
             <p className="text-sm font-medium text-gray-400 dark:text-zinc-600">
-              © {new Date().getFullYear()} RecME. Designed with ❤️ for cinephiles.
+              © {new Date().getFullYear()} RecME.
             </p>
             <div className="flex items-center gap-6">
               <Link href="/privacy" className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-zinc-500 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">

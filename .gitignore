@@ -1,1 +1,46 @@
+# Environment & secrets
 .env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node / Frontend
+node_modules/
+.next/
+out/
+
+# Models (large binary files)
+models/*.pkl
+models/*.joblib
+
+# Debug & temp files
+tmp_*.py
+*.log
+
+# Test coverage
+htmlcov/
+.coverage
+.pytest_cache/

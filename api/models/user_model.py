@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field
 import uuid
@@ -14,7 +14,7 @@ class UserCreate(UserBase):
 class UserInDB(UserBase):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     hashed_password: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class UserOut(UserBase):
     id: str

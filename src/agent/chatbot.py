@@ -1,8 +1,13 @@
+import asyncio
+import logging
 import os
-import httpx
-import json
 from typing import Optional, List
+
+import httpx
+
 from src.config.settings import settings
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are RecME AI — an expert film assistant.
 Your job is to handle ALL types of film-related queries intelligently.
@@ -34,6 +39,7 @@ class ChatbotAgent:
     def __init__(self):
         self.api_key = os.getenv("LLM_API_KEY") or settings.LLM_API_KEY
         self.system_prompt = SYSTEM_PROMPT
+
     async def get_response(self, user_message: str, history: Optional[List[dict]] = None, context: str = ""):
         """
         Calls Gemini API with the system prompt, conversation history, and search context.
@@ -42,14 +48,8 @@ class ChatbotAgent:
             return None
 
         model_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.api_key}"
-        
+
         # Prepare messages for Gemini format
-        messages = []
-        
-        # Add system prompt as a "user" instruction (Gemini-1.5 style) 
-        # or use system_instruction if supported by the endpoint version.
-        # For simplicity with this endpoint, we'll prefix the first message or use a preamble.
-        
         full_system_msg = self.system_prompt
         if context:
             full_system_msg += f"\n\nUSEFUL MOVIE DATA FROM DATABASE:\n{context}\nUse this data to ensure accuracy if relevant."
@@ -82,31 +82,32 @@ class ChatbotAgent:
             }
         }
 
-        import asyncio
         for attempt in range(3):
             try:
                 async with httpx.AsyncClient() as client:
                     response = await client.post(model_url, json=payload, timeout=30.0)
                     data = response.json()
-                    
+
                     if response.status_code == 429:
-                        print(f"[GEMINI 429] Rate limit hit. Retrying in {attempt + 1}s...")
+                        logger.warning("Gemini 429 rate limit hit. Retry attempt %d/3...", attempt + 1)
                         await asyncio.sleep(attempt + 1)
                         continue
 
                     if response.status_code != 200:
                         error_msg = data.get("error", {}).get("message", "Unknown API error")
-                        print(f"[GEMINI ERROR] {response.status_code}: {data}")
+                        logger.error("Gemini API error %d: %s", response.status_code, error_msg)
                         return f"API Error ({response.status_code}): {error_msg}"
-                        
+
                     if "candidates" in data and len(data["candidates"]) > 0:
                         text = data["candidates"][0]["content"]["parts"][0]["text"]
                         return text
                     return "I'm sorry, I couldn't generate a response. Please try again."
             except Exception as e:
                 if attempt < 2:
+                    logger.warning("Gemini request attempt %d failed: %s. Retrying...", attempt + 1, repr(e))
                     await asyncio.sleep(1)
                     continue
+                logger.error("Gemini request failed after 3 attempts: %s", repr(e))
                 return f"Network Error: {repr(e)}"
-        
+
         return "I'm having trouble connecting to my AI core (Rate Limit). Please try again in a few seconds."

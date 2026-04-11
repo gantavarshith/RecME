@@ -1,10 +1,12 @@
 import datetime
+import logging
 import random
 import time
 from fastapi import APIRouter, Depends
 from api.services.movie_service import _build_movie_pool, get_movie_detail
 from api.dependencies import get_db, get_current_user_optional
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # In-memory cache: key -> (movie_dict, expires_at_timestamp)
@@ -13,7 +15,7 @@ _motd_cache: dict = {}
 
 def _seconds_until_midnight() -> float:
     """Returns seconds remaining until next UTC midnight."""
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     midnight = (now + datetime.timedelta(days=1)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
@@ -50,37 +52,22 @@ async def get_movie_of_the_day(
     exclude_ids: set = set()
     if current_user:
         try:
-            # Watched
-            watched_cursor = db.watched.find({"user_id": current_user.id}, {"movie_data.id": 1})
-            watched_docs = await watched_cursor.to_list(length=1000)
-            for doc in watched_docs:
-                mid = doc.get("movie_data", {}).get("id")
-                if mid is not None:
-                    exclude_ids.add(str(mid)); exclude_ids.add(int(mid) if str(mid).isdigit() else mid)
-
-            # Watchlist
-            wl_cursor = db.watchlist.find({"user_id": current_user.id}, {"movie_data.id": 1})
-            wl_docs = await wl_cursor.to_list(length=500)
-            for doc in wl_docs:
-                mid = doc.get("movie_data", {}).get("id")
-                if mid is not None:
-                    exclude_ids.add(str(mid)); exclude_ids.add(int(mid) if str(mid).isdigit() else mid)
-            
-            # Not Interested
-            ni_cursor = db.not_interested.find({"user_id": current_user.id}, {"movie_data.id": 1})
-            ni_docs = await ni_cursor.to_list(length=500)
-            for doc in ni_docs:
-                mid = doc.get("movie_data", {}).get("id")
-                if mid is not None:
-                    exclude_ids.add(str(mid)); exclude_ids.add(int(mid) if str(mid).isdigit() else mid)
+            for collection_name in ["watched", "watchlist", "not_interested"]:
+                cursor = db[collection_name].find(
+                    {"user_id": current_user.id},
+                    {"movie_data.id": 1}
+                )
+                docs = await cursor.to_list(length=1000)
+                for doc in docs:
+                    mid = doc.get("movie_data", {}).get("id")
+                    if mid is not None:
+                        exclude_ids.add(str(mid))
+                        if str(mid).isdigit():
+                            exclude_ids.add(int(mid))
         except Exception as e:
-            print(f"[MOTD] History fetch error: {e}")
+            logger.warning("MOTD: Failed to fetch user history for exclusion: %s", e)
 
     # 2. Get premium movies pool (Deterministic order)
-    pool = await _build_movie_pool()
-    if not pool:
-        return {}
-    
     # Sort pool by ID to ensure rng.shuffle or selection is stable across server restarts if pool order changes
     stable_pool = sorted(pool, key=lambda x: str(x.get('id', '')))
     premium = [m for m in stable_pool if (m.get("vote_average") or 0) >= 7.5]
@@ -90,11 +77,11 @@ async def get_movie_of_the_day(
     # 3. Deterministic candidate sequence per day (Global seed)
     date_ordinal = datetime.date.today().toordinal()
     rng = random.Random(date_ordinal)
-    
+
     # We shuffle a copy of the premium pool using the day's seed
     candidates = premium.copy()
     rng.shuffle(candidates)
-    
+
     # Pick the first one that isn't excluded for this specific user
     chosen_basic = candidates[0] # Fallback
     for c in candidates:

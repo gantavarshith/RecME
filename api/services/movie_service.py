@@ -3,6 +3,7 @@ Unified Movie Service - fast TMDB-first data, optional OMDb enrichment for detai
 Uses in-memory TTL caching for instant subsequent responses.
 """
 import asyncio
+import logging
 import os
 import random
 import time
@@ -12,6 +13,8 @@ import httpx
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 TMDB_KEY = os.getenv("TMDB_API_KEY", "")
 OMDB_KEY = os.getenv("OMDB_API_KEY", "")
@@ -79,10 +82,11 @@ async def _tmdb(client: httpx.AsyncClient, path: str, **params) -> dict:
         )
         r.raise_for_status()
         return r.json()
+    except httpx.HTTPStatusError as e:
+        logger.error("TMDB HTTP error on %s: %d %s", path, e.response.status_code, e.response.text[:200])
+        return {}
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(f"[TMDB ERROR] {path}: {repr(e)}")
+        logger.error("TMDB request failed on %s: %s", path, repr(e))
         return {}
 
 
@@ -96,7 +100,7 @@ async def _omdb(client: httpx.AsyncClient, **params) -> dict:
         r.raise_for_status()
         return r.json()
     except Exception as e:
-        print(f"[OMDb ERROR] {e}")
+        logger.error("OMDb request failed: %s", repr(e))
         return {}
 
 
@@ -138,6 +142,8 @@ async def _build_movie_pool() -> list[dict]:
     if _movie_pool and (time.time() - _pool_fetched_at) < CACHE_TTL:
         return _movie_pool
 
+    logger.info("Building movie pool from TMDB (cache expired or first run)...")
+
     async with httpx.AsyncClient() as client:
         pages = await asyncio.gather(
             # Top rated "gems"
@@ -151,19 +157,19 @@ async def _build_movie_pool() -> list[dict]:
                   **{"vote_count.gte": 1000, "vote_average.gte": 7.5, "page": 4}),
             _tmdb(client, "/discover/movie", sort_by="vote_average.desc",
                   **{"vote_count.gte": 1000, "vote_average.gte": 7.5, "page": 5}),
-            
+
             # High popularity "hits"
             _tmdb(client, "/movie/popular", page=1),
             _tmdb(client, "/movie/popular", page=2),
             _tmdb(client, "/movie/popular", page=3),
             _tmdb(client, "/movie/popular", page=4),
             _tmdb(client, "/movie/popular", page=5),
-            
+
             # Top rated "classics"
             _tmdb(client, "/movie/top_rated", page=1),
             _tmdb(client, "/movie/top_rated", page=2),
             _tmdb(client, "/movie/top_rated", page=3),
-            
+
             # Diverse genres (Action, Sci-Fi, Comedy, Drama/Must-watch)
             _tmdb(client, "/discover/movie", sort_by="popularity.desc", **{"with_genres": "28,878", "page": 1}),
             _tmdb(client, "/discover/movie", sort_by="popularity.desc", **{"with_genres": "35,10749", "page": 1}),
@@ -183,6 +189,7 @@ async def _build_movie_pool() -> list[dict]:
     filtered = [m for m in raw if (m.get("vote_average") or 0) >= 6.5]
     _movie_pool = [_shape(m) for m in filtered]
     _pool_fetched_at = time.time()
+    logger.info("Movie pool built successfully: %d movies.", len(_movie_pool))
     return _movie_pool
 
 
@@ -245,7 +252,7 @@ async def get_mood_movies(mood: str, top_k: int = 20) -> list[dict]:
     """
     mood_key = mood.lower().strip()
     pool = await _build_mood_pool(mood_key)
-    
+
     shuffled = pool.copy()
     random.shuffle(shuffled)
     return shuffled[:top_k]
@@ -257,12 +264,12 @@ async def get_movies_by_tag(tag: str, limit: int = 20) -> list[dict]:
     Uses specialized TMDB endpoints for each.
     """
     tag = tag.lower().strip()
-    
+
     if tag == "featured":
         # For featured, we cache the pool of movies, but shuffle the output every time
         pool_key = f"tag_pool_v1:{tag}"
         pool = _cache_get(pool_key)
-        
+
         if pool is None:
             async with httpx.AsyncClient() as client:
                 pages = await asyncio.gather(
@@ -273,19 +280,19 @@ async def get_movies_by_tag(tag: str, limit: int = 20) -> list[dict]:
                 raw_results = []
                 for p in pages:
                     raw_results.extend(p.get("results", []))
-                
+
                 if not raw_results:
                     return []
-                
+
                 # Shape the pool
                 pool = [_shape(m) for m in raw_results if m.get("poster_path")]
                 if pool:
                     _cache_set(pool_key, pool)
-        
+
         if pool:
             shuffled = list(pool)
             random.shuffle(shuffled)
-            print(f"[DEBUG] Shuffling featured pool of {len(pool)} movies. First is now: {shuffled[0].get('title')}")
+            logger.debug("Shuffling featured pool of %d movies.", len(pool))
             return shuffled[:limit]
         return []
 
@@ -310,10 +317,10 @@ async def get_movies_by_tag(tag: str, limit: int = 20) -> list[dict]:
 
     # Shape and limit
     result = [_shape(m) for m in raw if m.get("poster_path")][:limit]
-    
+
     if result:
         _cache_set(cache_key, result)
-        
+
     return result
 
 
@@ -340,12 +347,12 @@ async def search_films(query: str, page: int = 1) -> list[dict]:
             # Sort by popularity/rating blend
             raw.sort(key=lambda m: (m.get("vote_average") or 0) * (m.get("popularity") or 1), reverse=True)
             result = [_shape(m) for m in raw[:30] if m.get("poster_path")]
-            
+
             if result:
                 _cache_set(cache_key, result)
             return result
         except Exception as e:
-            print("Search films error:", e)
+            logger.error("Search films error for query '%s': %s", query, repr(e))
             return []
 
 

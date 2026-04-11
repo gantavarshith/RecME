@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     LLM_API_KEY: str
     ALLOWED_ORIGINS: str = "*"
+    LOG_LEVEL: str = "INFO"
 
     class Config:
         env_file = ".env"
