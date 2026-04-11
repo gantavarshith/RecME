@@ -165,11 +165,24 @@ async def get_stats(
 
     genre_counts = {}
 
+    GENRE_MAP = {
+        28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy",
+        80: "Crime", 99: "Documentary", 18: "Drama", 10751: "Family",
+        14: "Fantasy", 36: "History", 27: "Horror", 10402: "Music",
+        9648: "Mystery", 10749: "Romance", 878: "Science Fiction",
+        10770: "TV Movie", 53: "Thriller", 10752: "War", 37: "Western"
+    }
+
     for entry in watched:
         movie_data = entry.get("movie_data", {})
 
         # Flattened Genre Calculation (surgical)
         raw_genres = movie_data.get("genres") or []
+        
+        # Fallback to genre_ids if genres is empty
+        if not raw_genres:
+            g_ids = movie_data.get("genre_ids") or []
+            raw_genres = [GENRE_MAP.get(gid, "Unknown") for gid in g_ids if gid in GENRE_MAP]
 
         # Ensure we always process as a flat list
         if isinstance(raw_genres, (str, dict)):

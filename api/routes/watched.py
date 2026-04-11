@@ -13,6 +13,7 @@ class WatchedMovie(BaseModel):
     vote_average: float | None = None
     release_date: str | None = None
     genres: List[str] = []
+    genre_ids: List[int] = []
 
 @router.get("/", response_model=List[WatchedMovie])
 async def get_watched(current_user: UserOut = Depends(get_current_user), db = Depends(get_db)):
