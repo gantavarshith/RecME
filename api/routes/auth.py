@@ -190,10 +190,10 @@ async def get_stats(
                     norm = name.strip().title()
                     genre_counts[norm] = genre_counts.get(norm, 0) + 1
 
-    # Sort and get top genre (Require at least 10 films for an accurate 'Top Genre')
+    # Sort and get top genre
     top_genre = "N/A"
     sorted_genres = sorted(genre_counts.items(), key=lambda x: x[1], reverse=True)
-    if len(watched) >= 10 and sorted_genres:
+    if sorted_genres:
         top_genre = sorted_genres[0][0]
 
     return {

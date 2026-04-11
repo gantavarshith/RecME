@@ -51,7 +51,10 @@ export default function ProfilePage() {
     }
 
     const fetchStats = async () => {
-      if (!token) return;
+      if (!token) {
+        setLoadingStats(false);
+        return;
+      }
       try {
         const data = await getUserStats(token);
         setStats(data);
@@ -285,7 +288,7 @@ export default function ProfilePage() {
                   ) : stats?.top_genre && stats.top_genre !== "N/A" ? (
                     stats.top_genre
                   ) : (
-                    <span className="text-xs font-normal text-gray-400">Watch 10 films to unlock</span>
+                    <span className="text-xs font-normal text-gray-400">Watch films to unlock</span>
                   )}
                 </div>
               </div>

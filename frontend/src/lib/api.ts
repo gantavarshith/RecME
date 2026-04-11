@@ -11,6 +11,7 @@ async function fetchAPI<T>(
       ...headers,
     },
     credentials: "include",
+    cache: "no-store",
     ...restOptions,
   });
   if (!response.ok) {
